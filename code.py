@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import sklearn
 import matplotlib.pyplot as plt
+def load_files(file_path):
+    categories = pd.read_csv(file_path)
+    categories.set_index('category_id', inplace=True)
+    return categories
 
-# Good job!
 categories = pd.read_csv('similar-staff-picks-challenge-categories.csv')
 categories.set_index('category_id', inplace=True)
 
