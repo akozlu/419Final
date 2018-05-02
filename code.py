@@ -6,6 +6,7 @@ import seaborn as sb
 import sklearn
 import matplotlib.pyplot as plt
 
+# Good job!
 categories = pd.read_csv('similar-staff-picks-challenge-categories.csv')
 categories.set_index('category_id', inplace=True)
 
