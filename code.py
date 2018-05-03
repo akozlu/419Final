@@ -17,10 +17,16 @@ class PandaFrames(object):
         self.pandaframes = load_train_and_test_files(filepath)
 
     def get_train_file(self):
-        return self.pandaframes[0]
+        train = self.pandaframes[0]
+        train = train.reset_index()
+        train = train.drop(columns=['Unnamed: 0', 'index'])
+        return train
 
     def get_test_file(self):
-        return self.pandaframes[1]
+        test = self.pandaframes[1]
+        test = test.reset_index()
+        train = test.drop(columns=['Unnamed: 0', 'index'])
+        return test
 
 
-pd = PandaFrames('similar-staff-picks-challenge-clips.csv')
+pdf = PandaFrames('similar-staff-picks-challenge-clips.csv')
