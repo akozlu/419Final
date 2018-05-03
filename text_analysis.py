@@ -40,14 +40,14 @@ def transform_caption(dataframe):
         dataframe.at[i, 'tokenized caption'] = tokenize(str(dataframe.at[i, 'caption']))
     return dataframe
 
-train = code.pdf.get_train_file()
-test = code.pdf.get_test_file()
-
-train = transform_caption(train)
-print(train.head())
-
-# pipeline = remote_pipeline.RemotePipeline(server_api='http://austen.cs.illinois.edu:5800/')
+# train = code.pdf.get_train_file()
+# test = code.pdf.get_test_file()
 #
-# doc = pipeline.doc("Hello, how are you. I am doing fine")
-# print(doc.get_lemma)
-# print(doc.get_pos)
+# train = transform_caption(train)
+# print(train.head())
+
+pipeline = remote_pipeline.RemotePipeline(server_api='http://austen.cs.illinois.edu:5800/')
+
+doc = pipeline.doc("Hello, how are you. I am doing fine")
+print(doc.get_lemma)
+print(doc.get_pos)
