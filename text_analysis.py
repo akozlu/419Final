@@ -23,11 +23,6 @@ stopWords = set(stopwords.words('english'))
 # Regex to remove punctuation
 regex = re.compile('[%s]' % re.escape(string.punctuation))
 
-# Alternative tokenization schema
-# # Tokenization Schema 1
-# rgx = re.compile("(\w[\w']*\w|\w)")
-# text_list = rgx.findall(text)
-
 def tokenize(caption):
     words = []
 
@@ -108,17 +103,9 @@ def sentence_similarity(sentence1, sentence2):
     return ((similarity1 / num_words1) + (similarity2 / num_words2)) / 2
 
 
-
 train = code.pdf.get_train_file()
 test = code.pdf.get_test_file()
 
 train = transform_caption(train)
 
 print(sentence_similarity(['Hi', 'there', 'this', 'is', 'cool'], ['Hello', 'I', 'am', 'an', 'idiot']))
-# print(sentence_similarity(['hi', 'there', 'I', 'love', 'dog', 'shit'], ['hi', 'there', 'I', 'love', 'dog']))
-
-# pipeline = remote_pipeline.RemotePipeline(server_api='http://austen.cs.illinois.edu:5800/')
-#
-# doc = pipeline.doc("Hello, how are you. I am doing fine")
-# print(doc.get_lemma)
-# print(doc.get_pos)
