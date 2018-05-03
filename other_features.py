@@ -10,4 +10,6 @@ def extract_date(df):
     df['created month'] = df['created'].apply(lambda x: int(str(x)[5:7]))
     return df
 
-print(extract_date(train).head())
+train = extract_date(train)
+
+print(train)
