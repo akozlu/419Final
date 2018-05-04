@@ -1,7 +1,7 @@
-import code
+import feature_extraction
 
-train = code.pdf.get_train_file()
-test = code.pdf.get_test_file()
+train = feature_extraction.pdf.get_train_file()
+test = feature_extraction.pdf.get_test_file()
 
 def extract_date(df):
     df['created year'] = 0
