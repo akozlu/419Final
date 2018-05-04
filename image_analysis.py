@@ -1,4 +1,5 @@
 from PIL import Image
+import matplotlib.image as mpimg
 
 for thumbnail in os.listdir(directory):
     if '.DS_Store' in thumbnail:
@@ -8,8 +9,8 @@ for thumbnail in os.listdir(directory):
                                                                                                             :-5] + ".jpg",
             "jpeg")
 
+
 # %%Converting pics to gracyscale
-import matplotlib.image as mpimg
 
 
 def rgb2gray(rgb):
