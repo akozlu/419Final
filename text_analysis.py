@@ -102,7 +102,7 @@ def lch_sim(s1, s2):
 
 
 # Try using all synsets for each word instead of just one (using wn.synsets('word'))
-# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+# The argument 'f_sim' should be one of [path_sim, lch_sim, wup_sim]
 def sentence_similarity(sentence1, sentence2, f_sim):
     postag1 = pos_tag(sentence1)
     postag2 = pos_tag(sentence2)
@@ -118,7 +118,10 @@ def sentence_similarity(sentence1, sentence2, f_sim):
     similarity2 = 0
     num_words2 = 0
 
-    if len(synsets1) < len(synsets2):
+    if len(synsets1) == 0 or len(synsets2) == 0:
+        return 0
+
+    elif len(synsets1) < len(synsets2):
         for set1 in synsets1:
             sim_array = []
             for set2 in synsets2:
@@ -171,22 +174,21 @@ def sentence_similarity(sentence1, sentence2, f_sim):
         return (similarity_main / num_words_main + similarity2 / num_words2) / 2
 
 
-# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+# The argument 'f_sim' should be one of [path_sim, lch_sim, wup_sim]
 def caption_similarity(df, clip_id, f_sim):
     # df = transform_caption(df)
     df['caption path similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     target_clip = df[df['id'] == clip_id]
-    df = df.drop([clip_index]).reset_index.drop(columns=['index'])
+    df = df.drop([clip_index]).reset_index().drop(columns=['index'])
     df['caption path similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
-                                        df.at[i, 'tokenized caption']) for i in range(len(df),
-                                        f_sim)]
+                                        df.at[i, 'tokenized caption'], f_sim) for i in range(len(df))]
     df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
 
 # Function to find accuracy with categories as labels and threshold for 1 vs 0. Iterates over every id in the df.
-# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+# The argument 'f_sim' should be one of [path_sim, lch_sim, wup_sim]
 def calculate_accuracy(df, thresh, top_k, f_sim):
     accuracies = 0
     for id in df['id']:
@@ -199,12 +201,18 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
             accuracies += 1
     return accuracies / len(df)
 
+# # Normal initialization to get online captions
+# pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
+# train = transform_caption(pdf.get_train_file())
+# test = transform_caption(pdf.get_test_file())
 
-pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
-train = transform_caption(pdf.get_train_file())
-test = transform_caption(pdf.get_test_file())
+# Temporary initialization to work with initial captions
+train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv')[0]
+train = train.reset_index()
+train = train.drop(columns=['Unnamed: 0', 'index'])
+train = transform_caption(train)
 
-train = caption_similarity(train, 214566929, path_sim())
+train = caption_similarity(train, 214566929, path_sim)
 print(train.head())
 
 # print(sentence_path_similarity(['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
