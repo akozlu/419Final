@@ -4,15 +4,23 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import urllib.request
 
+def load_whole_file(file_path):
+    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+    return data
+
 
 def load_train_and_test_files(file_path):
-    categories = pd.read_csv(file_path, encoding="ISO-8859-1")
+    data = pd.read_csv(file_path, encoding="ISO-8859-1")
     # categories.set_index('category_id', inplace=True)
     np.random.seed(seed=0)
-    indices = np.random.rand(len(categories)) < 0.8
-    train = categories[indices]
-    test = categories[~indices]
+    indices = np.random.rand(len(data)) < 0.8
+    train = data[indices]
+    test = data[~indices]
     return [train, test]
+
+def load_clips_categories(file_path):
+    clip_categories = pd.read_csv(file_path, encoding="ISO-8859-1")
+    return clip_categories
 
 
 def url_is_alive(url):
@@ -31,6 +39,36 @@ def url_is_alive(url):
         return False
 
 
+def get_unknown_clip_categories(data_path,categories_path):
+
+    data = load_whole_file(data_path)
+    clip_categories = load_clips_categories(categories_path)
+    counter  = 0
+
+    for id in data['id']:
+
+        if id not in clip_categories.clip_id.values:
+            url = 'https://vimeo.com/' + str(id)
+            url_valid = url_is_alive(url)
+
+            if url_valid:  # check if url is valid
+               print(id)
+               vimeo_webpage = urlopen(url)
+
+               content = vimeo_webpage.read()  # get content from webpage
+               soup = BeautifulSoup(content, 'html.parser')
+               #print(soup)
+               for script in soup("script"):
+                   script.extract()
+               list_of_scripts = soup.findAll("script")
+               print( list_of_scripts)
+               #categories = soup.find('div', attrs={'class': "clip-categories"})
+               #print(categories)
+              # print(categories.get_text(separator=" ", strip=True))
+               # counter = counter + 1
+
+    return counter
+
 class PandaFrames(object):
     def __init__(self, filepath):
         self.pandaframes = load_train_and_test_files(filepath)
@@ -40,13 +78,13 @@ class PandaFrames(object):
     def get_train_file(self):
         train = self.pandaframes[0]
         train = train.reset_index()
-        train = train.drop(columns=['Unnamed: 0', 'index'])
+        train = train.drop(['Unnamed: 0', 'index'],axis = 1)
         return train
 
     def get_test_file(self):
         test = self.pandaframes[1]
         test = test.reset_index()
-        test = test.drop(columns=['Unnamed: 0', 'index'])
+        test = test.drop(['Unnamed: 0', 'index'],axis = 1)
         return test
 
     def get_new_captions_for_train_file(self):
@@ -104,4 +142,10 @@ class PandaFrames(object):
                     test.loc[index, 'caption'] = ' '.join(article_soup)  # update the caption of our train dataset
 
 
-#pdf = PandaFrames('similar-staff-picks-challenge-clips.csv')
+
+#data  =load_whole_file('similar-staff-picks-challenge-clips.csv')
+#print(len(data))
+
+#c_id = load_clips_categories('similar-staff-picks-challenge-clip-categories.csv')
+#print (len(c_id))
+#get_unknown_clip_categories('similar-staff-picks-challenge-clips.csv','similar-staff-picks-challenge-clip-categories.csv')
