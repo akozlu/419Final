@@ -215,7 +215,8 @@ train = transform_caption(train)
 train = caption_similarity(train, 214566929, path_sim)
 print(train.head())
 
-# print(sentence_path_similarity(['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
-#                                ['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it']))
-# print(sentence_path_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
+# print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
+#                           ['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code', 'all', 'day'],
+#                             lch_sim))
+# print(sentence_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
 #                                ['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code']))
