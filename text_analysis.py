@@ -9,7 +9,7 @@ from nltk.corpus import wordnet as wn
 import re
 import string
 import itertools
-import code
+import feature_extraction
 
 # # UNCOMMENT THE TWO LINES BELOW TO RUN FOR THE FIRST TIME
 # nltk.download('wordnet')
@@ -164,8 +164,8 @@ def caption_similarity(df, clip_id):
     df = df.sort_values(['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
-train = code.pdf.get_train_file()
-test = code.pdf.get_test_file()
+train = feature_extraction.pdf.get_train_file()
+test = feature_extraction.pdf.get_test_file()
 
 train = caption_similarity(transform_caption(train), 214566929)
 print(train.head())
