@@ -209,7 +209,7 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
 # Temporary initialization to work with initial captions
 train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv')[0]
 train = train.reset_index()
-train = train.drop(columns=['Unnamed: 0', 'index'])
+train = train.drop(['Unnamed: 0', 'index'], axis=1)
 train = transform_caption(train)
 
 train = caption_similarity(train, 214566929, path_sim)
