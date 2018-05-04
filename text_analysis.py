@@ -23,7 +23,6 @@ stopWords = set(stopwords.words('english'))
 # Regex to remove punctuation
 regex = re.compile('[%s]' % re.escape(string.punctuation))
 
-
 def tokenize(caption):
     words = []
 
@@ -72,6 +71,7 @@ def word_to_synset(word, pos):
             return sets[0]
 
 
+# Need two synsets to have same part of speech to calculate path similarity
 def path_sim(s1, s2):
     if (s1.pos() == s2.pos()):
         return s1.path_similarity(s2)
@@ -79,8 +79,24 @@ def path_sim(s1, s2):
         return 0
 
 
+# Need two synsets to have same part of speech to calculate wup similarity
+def wup_sim(s1, s2):
+    if (s1.pos() == s2.pos()):
+        return s1.wup_similarity(s2)
+    else:
+        return 0
+
+
+# Need two synsets to have same part of speech to calculate wup similarity
+def lch_sim(s1, s2):
+    if (s1.pos() == s2.pos()):
+        return s1.lch_similarity(s2)
+    else:
+        return 0
+
+
 # Try using all synsets for each word instead of just one (using wn.synsets('word'))
-def sentence_similarity(sentence1, sentence2):
+def sentence_path_similarity(sentence1, sentence2):
     postag1 = pos_tag(sentence1)
     postag2 = pos_tag(sentence2)
 
@@ -105,12 +121,9 @@ def sentence_similarity(sentence1, sentence2):
             top_similarity = np.max(sim_array)
             if top_similarity is not None:
                 similarity_main += top_similarity
-                num_words_main += 1
+            num_words_main += 1
 
-        if num_words_main > 0:
-            return similarity_main / num_words_main
-        else:
-            return 0
+        return similarity_main / num_words_main
 
     elif len(synsets1) > len(synsets2):
         for set2 in synsets2:
@@ -122,12 +135,9 @@ def sentence_similarity(sentence1, sentence2):
             top_similarity = np.max(sim_array)
             if top_similarity is not None:
                 similarity_main += top_similarity
-                num_words_main += 1
+            num_words_main += 1
 
-        if num_words_main > 0:
-            return similarity_main / num_words_main
-        else:
-            return 0
+        return similarity_main / num_words_main
 
     else:
         for set1 in synsets1:
@@ -139,7 +149,7 @@ def sentence_similarity(sentence1, sentence2):
             top_similarity = np.max(sim_array)
             if top_similarity is not None:
                 similarity_main += top_similarity
-                num_words_main += 1
+            num_words_main += 1
         for set2 in synsets2:
             sim_array = []
             for set1 in synsets1:
@@ -149,34 +159,45 @@ def sentence_similarity(sentence1, sentence2):
             top_similarity2 = np.max(sim_array)
             if top_similarity2 is not None:
                 similarity2 += top_similarity2
-                num_words2 += 1
+            num_words2 += 1
 
-        if num_words_main is 0:
-            sim_final_main = 0
-        else:
-            sim_final_main = similarity_main / num_words_main
-        if num_words2 is 0:
-            sim_final2 = 0
-        else:
-            sim_final2 = similarity2 / num_words2
-        return (sim_final_main + sim_final2) / 2
+        return (similarity_main / num_words_main + similarity2 / num_words2) / 2
 
 
-def caption_similarity(df, clip_id):
-    df = transform_caption(df)
+def caption_path_similarity(df, clip_id):
+    # df = transform_caption(df)
     df['caption path similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
-    df['caption path similarity'] = [sentence_similarity(df.at[clip_index, 'tokenized caption'],
+    target_clip = df[df['id'] == clip_id]
+    df = df.drop([clip_index]).reset_index.drop(columns=['index'])
+    df['caption path similarity'] = [sentence_path_similarity(target_clip.at[clip_index, 'tokenized caption'],
                                                          df.at[i, 'tokenized caption']) for i in range(len(df))]
     df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
 
-pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
-train = pdf.get_train_file()
-test = pdf.get_test_file()
+# Function to find accuracy with categories as labels and threshold for 1 vs 0. Iterates over every id in the df
+def calculate_accuracy(df, thresh, top_k):
+    accuracies = 0
+    for id in df['id']:
+        sim_df = caption_path_similarity(df, id)
+        correct = 0
+        for i in range(top_k):
+            if sim_df.at[i, 'category'] == df.at[id, 'category']:
+                correct += 1
+        if correct >= thresh:
+            accuracies += 1
+    return accuracies / len(df)
 
-train = caption_similarity(train, 214566929)
+
+pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
+train = transform_caption(pdf.get_train_file())
+test = transform_caption(pdf.get_test_file())
+
+train = caption_path_similarity(train, 214566929)
 print(train.head())
 
-# Write function to find 'accuracy' with categories as labels and threshold for 1 vs 0. Run on every id in the df
+# print(sentence_path_similarity(['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
+#                                ['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it']))
+# print(sentence_path_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
+#                                ['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code']))
