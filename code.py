@@ -25,7 +25,7 @@ class PandaFrames(object):
     def get_test_file(self):
         test = self.pandaframes[1]
         test = test.reset_index()
-        train = test.drop(columns=['Unnamed: 0', 'index'])
+        test = test.drop(columns=['Unnamed: 0', 'index'])
         return test
 
 
