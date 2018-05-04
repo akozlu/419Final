@@ -157,21 +157,18 @@ def sentence_similarity(sentence1, sentence2):
         return (sim_final_main + sim_final2) / 2
 
 def caption_similarity(df, clip_id):
+    df = transform_caption(df)
     df['caption path similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     df['caption path similarity'] = [sentence_similarity(df.at[clip_index,'tokenized caption'],
                                                          df.at[i, 'tokenized caption']) for i in range(len(df))]
-    df = df.sort_values(['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
+    df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
 train = feature_extraction.pdf.get_train_file()
 test = feature_extraction.pdf.get_test_file()
 
-train = caption_similarity(transform_caption(train), 214566929)
+train = caption_similarity(train, 214566929)
 print(train.head())
-# sorted = train.sort_values(by = ['id'], ascending=False)
-# sorted = (sorted.reset_index()).drop(columns=['index'])
-# print(sorted.head())
 
-# print(sentence_similarity(['Hello', 'I', 'am', 'an', 'idiot'], ['Hi', 'there', 'this', 'is', 'cool']))
-# print(sentence_similarity(['Hi', 'there', 'this', 'is', 'cool'], ['Hello', 'I', 'am', 'an', 'idiot']))
+# Write function to find 'accuracy' with categories as labels and threshold for 1 vs 0. Run on every id in the df
