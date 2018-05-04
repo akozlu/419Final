@@ -8,7 +8,6 @@ from nltk.corpus import stopwords
 from nltk.corpus import wordnet as wn
 import re
 import string
-import itertools
 import feature_extraction
 
 # # UNCOMMENT THE TWO LINES BELOW TO RUN FOR THE FIRST TIME
@@ -23,6 +22,7 @@ stopWords = set(stopwords.words('english'))
 # Regex to remove punctuation
 regex = re.compile('[%s]' % re.escape(string.punctuation))
 
+# Function to tokenize a caption
 def tokenize(caption):
     words = []
 
@@ -37,6 +37,7 @@ def tokenize(caption):
     return words
 
 
+# Function to add the 'tokenized caption' column, containing the tokenized caption, to a dataframe
 def transform_caption(dataframe):
     dataframe['tokenized caption'] = ""
     for i in range(len(dataframe)):
@@ -44,6 +45,7 @@ def transform_caption(dataframe):
     return dataframe
 
 
+# Function to convert the Penn part of speech tag to the WordNet synset part of speech tag
 def synset_pos_tag(tag):
     if tag.startswith('V'):
         return 'v'
@@ -57,6 +59,7 @@ def synset_pos_tag(tag):
         return None
 
 
+# Function to retrieve the WordNet synset given a word
 def word_to_synset(word, pos):
     tag = synset_pos_tag(pos)
     if tag is None:
@@ -71,24 +74,27 @@ def word_to_synset(word, pos):
             return sets[0]
 
 
-# Need two synsets to have same part of speech to calculate path similarity
+# Function to calculate the path similarity given two synsets
 def path_sim(s1, s2):
+    # Need two synsets to have same part of speech to calculate path similarity
     if (s1.pos() == s2.pos()):
         return s1.path_similarity(s2)
     else:
         return 0
 
 
-# Need two synsets to have same part of speech to calculate wup similarity
+# Function to calculate the Wu-Palmer similarity given two synsets
 def wup_sim(s1, s2):
+    # Need two synsets to have same part of speech to calculate Wu-Palmer similarity
     if (s1.pos() == s2.pos()):
         return s1.wup_similarity(s2)
     else:
         return 0
 
 
-# Need two synsets to have same part of speech to calculate wup similarity
+# Function to calculate the Leacock-Chodorow similarity given two synsets
 def lch_sim(s1, s2):
+    # Need two synsets to have same part of speech to calculate Leacock-Chodorow similarity
     if (s1.pos() == s2.pos()):
         return s1.lch_similarity(s2)
     else:
@@ -96,7 +102,8 @@ def lch_sim(s1, s2):
 
 
 # Try using all synsets for each word instead of just one (using wn.synsets('word'))
-def sentence_path_similarity(sentence1, sentence2):
+# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+def sentence_similarity(sentence1, sentence2, f_sim):
     postag1 = pos_tag(sentence1)
     postag2 = pos_tag(sentence2)
 
@@ -115,7 +122,7 @@ def sentence_path_similarity(sentence1, sentence2):
         for set1 in synsets1:
             sim_array = []
             for set2 in synsets2:
-                sim12 = path_sim(set1, set2)
+                sim12 = f_sim(set1, set2)
                 if sim12 is not None:
                     sim_array.append(sim12)
             top_similarity = np.max(sim_array)
@@ -129,7 +136,7 @@ def sentence_path_similarity(sentence1, sentence2):
         for set2 in synsets2:
             sim_array = []
             for set1 in synsets1:
-                sim21 = path_sim(set2, set1)
+                sim21 = f_sim(set2, set1)
                 if sim21 is not None:
                     sim_array.append(sim21)
             top_similarity = np.max(sim_array)
@@ -143,7 +150,7 @@ def sentence_path_similarity(sentence1, sentence2):
         for set1 in synsets1:
             sim_array = []
             for set2 in synsets2:
-                sim12 = path_sim(set1, set2)
+                sim12 = f_sim(set1, set2)
                 if sim12 is not None:
                     sim_array.append(sim12)
             top_similarity = np.max(sim_array)
@@ -153,7 +160,7 @@ def sentence_path_similarity(sentence1, sentence2):
         for set2 in synsets2:
             sim_array = []
             for set1 in synsets1:
-                sim21 = path_sim(set2, set1)
+                sim21 = f_sim(set2, set1)
                 if sim21 is not None:
                     sim_array.append(sim21)
             top_similarity2 = np.max(sim_array)
@@ -164,23 +171,26 @@ def sentence_path_similarity(sentence1, sentence2):
         return (similarity_main / num_words_main + similarity2 / num_words2) / 2
 
 
-def caption_path_similarity(df, clip_id):
+# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+def caption_similarity(df, clip_id, f_sim):
     # df = transform_caption(df)
     df['caption path similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     target_clip = df[df['id'] == clip_id]
     df = df.drop([clip_index]).reset_index.drop(columns=['index'])
-    df['caption path similarity'] = [sentence_path_similarity(target_clip.at[clip_index, 'tokenized caption'],
-                                                         df.at[i, 'tokenized caption']) for i in range(len(df))]
+    df['caption path similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
+                                        df.at[i, 'tokenized caption']) for i in range(len(df),
+                                        f_sim)]
     df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
 
-# Function to find accuracy with categories as labels and threshold for 1 vs 0. Iterates over every id in the df
-def calculate_accuracy(df, thresh, top_k):
+# Function to find accuracy with categories as labels and threshold for 1 vs 0. Iterates over every id in the df.
+# The argument 'f_sim' should be one of [path_sim(), lch_sim(), wup_sim()]
+def calculate_accuracy(df, thresh, top_k, f_sim):
     accuracies = 0
     for id in df['id']:
-        sim_df = caption_path_similarity(df, id)
+        sim_df = caption_similarity(df, id, f_sim)
         correct = 0
         for i in range(top_k):
             if sim_df.at[i, 'category'] == df.at[id, 'category']:
@@ -194,7 +204,7 @@ pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
 train = transform_caption(pdf.get_train_file())
 test = transform_caption(pdf.get_test_file())
 
-train = caption_path_similarity(train, 214566929)
+train = caption_similarity(train, 214566929, path_sim())
 print(train.head())
 
 # print(sentence_path_similarity(['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
