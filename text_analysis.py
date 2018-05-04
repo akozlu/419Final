@@ -23,6 +23,7 @@ stopWords = set(stopwords.words('english'))
 # Regex to remove punctuation
 regex = re.compile('[%s]' % re.escape(string.punctuation))
 
+
 def tokenize(caption):
     words = []
 
@@ -36,11 +37,13 @@ def tokenize(caption):
 
     return words
 
+
 def transform_caption(dataframe):
     dataframe['tokenized caption'] = ""
     for i in range(len(dataframe)):
         dataframe.at[i, 'tokenized caption'] = tokenize(str(dataframe.at[i, 'caption']))
     return dataframe
+
 
 def synset_pos_tag(tag):
     if tag.startswith('V'):
@@ -53,6 +56,7 @@ def synset_pos_tag(tag):
         return 'a'
     else:
         return None
+
 
 def word_to_synset(word, pos):
     tag = synset_pos_tag(pos)
@@ -67,15 +71,16 @@ def word_to_synset(word, pos):
         else:
             return sets[0]
 
+
 def path_sim(s1, s2):
     if (s1.pos() == s2.pos()):
         return s1.path_similarity(s2)
     else:
         return 0
 
+
 # Try using all synsets for each word instead of just one (using wn.synsets('word'))
 def sentence_similarity(sentence1, sentence2):
-
     postag1 = pos_tag(sentence1)
     postag2 = pos_tag(sentence2)
 
@@ -156,17 +161,20 @@ def sentence_similarity(sentence1, sentence2):
             sim_final2 = similarity2 / num_words2
         return (sim_final_main + sim_final2) / 2
 
+
 def caption_similarity(df, clip_id):
     df = transform_caption(df)
     df['caption path similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
-    df['caption path similarity'] = [sentence_similarity(df.at[clip_index,'tokenized caption'],
+    df['caption path similarity'] = [sentence_similarity(df.at[clip_index, 'tokenized caption'],
                                                          df.at[i, 'tokenized caption']) for i in range(len(df))]
     df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
-train = feature_extraction.pdf.get_train_file()
-test = feature_extraction.pdf.get_test_file()
+
+pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
+train = pdf.get_train_file()
+test = pdf.get_test_file()
 
 train = caption_similarity(train, 214566929)
 print(train.head())
