@@ -76,8 +76,8 @@ def path_sim(s1, s2):
 # Try using all synsets for each word instead of just one (using wn.synsets('word'))
 def sentence_similarity(sentence1, sentence2):
 
-    postag1 = nltk.pos_tag(sentence1)
-    postag2 = nltk.pos_tag(sentence2)
+    postag1 = pos_tag(sentence1)
+    postag2 = pos_tag(sentence2)
 
     synsets1_init = [word_to_synset(*word) for word in postag1]
     synsets2_init = [word_to_synset(*word) for word in postag2]
