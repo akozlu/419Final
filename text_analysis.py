@@ -60,10 +60,12 @@ def word_to_synset(word, pos):
         return None
     else:
         sets = wn.synsets(word, tag)
-        if sets is []:
+        if sets == []:
+            return None
+        elif sets is None:
             return None
         else:
-            return wn.synsets(word, tag)[0]
+            return sets[0]
 
 def path_sim(s1, s2):
     if (s1.pos() == s2.pos()):
@@ -77,35 +79,99 @@ def sentence_similarity(sentence1, sentence2):
     postag1 = nltk.pos_tag(sentence1)
     postag2 = nltk.pos_tag(sentence2)
 
-    synsets1 = [word_to_synset(*word) for word in postag1]
-    synsets2 = [word_to_synset(*word) for word in postag2]
+    synsets1_init = [word_to_synset(*word) for word in postag1]
+    synsets2_init = [word_to_synset(*word) for word in postag2]
 
-    synsets1 = [word for word in synsets1 if word]
-    synsets2 = [word for word in synsets2 if word]
+    synsets1 = [word for word in synsets1_init if word is not None]
+    synsets2 = [word for word in synsets2_init if word is not None]
 
-    similarity1 = 0
-    num_words1 = 0
+    similarity_main = 0
+    num_words_main = 0
     similarity2 = 0
     num_words2 = 0
 
-    for set1 in synsets1:
-        top_similarity = np.max([path_sim(set1, set2) for set2 in synsets2])
-        if top_similarity is not None:
-            similarity1 += top_similarity
-            num_words1 += 1
+    if len(synsets1) < len(synsets2):
+        for set1 in synsets1:
+            sim_array = []
+            for set2 in synsets2:
+                sim12 = path_sim(set1, set2)
+                if sim12 is not None:
+                    sim_array.append(sim12)
+            top_similarity = np.max(sim_array)
+            if top_similarity is not None:
+                similarity_main += top_similarity
+                num_words_main += 1
 
-    for set2 in synsets2:
-        top_similarity = np.max([path_sim(set2, set1) for set1 in synsets1])
-        if top_similarity is not 0:
-            similarity2 += top_similarity
-            num_words2 += 1
+        if num_words_main > 0:
+            return similarity_main / num_words_main
+        else:
+            return 0
 
-    return ((similarity1 / num_words1) + (similarity2 / num_words2)) / 2
+    elif len(synsets1) > len(synsets2):
+        for set2 in synsets2:
+            sim_array = []
+            for set1 in synsets1:
+                sim21 = path_sim(set2, set1)
+                if sim21 is not None:
+                    sim_array.append(sim21)
+            top_similarity = np.max(sim_array)
+            if top_similarity is not None:
+                similarity_main += top_similarity
+                num_words_main += 1
 
+        if num_words_main > 0:
+            return similarity_main / num_words_main
+        else:
+            return 0
+
+    else:
+        for set1 in synsets1:
+            sim_array = []
+            for set2 in synsets2:
+                sim12 = path_sim(set1, set2)
+                if sim12 is not None:
+                    sim_array.append(sim12)
+            top_similarity = np.max(sim_array)
+            if top_similarity is not None:
+                similarity_main += top_similarity
+                num_words_main += 1
+        for set2 in synsets2:
+            sim_array = []
+            for set1 in synsets1:
+                sim21 = path_sim(set2, set1)
+                if sim21 is not None:
+                    sim_array.append(sim21)
+            top_similarity2 = np.max(sim_array)
+            if top_similarity2 is not None:
+                similarity2 += top_similarity2
+                num_words2 += 1
+
+        if num_words_main is 0:
+            sim_final_main = 0
+        else:
+            sim_final_main = similarity_main / num_words_main
+        if num_words2 is 0:
+            sim_final2 = 0
+        else:
+            sim_final2 = similarity2 / num_words2
+        return (sim_final_main + sim_final2) / 2
+
+def caption_similarity(df, clip_id):
+    df['caption path similarity'] = 0.0
+    clip_index = df[df['id'] == clip_id].index[0]
+    df['caption path similarity'] = [sentence_similarity(df.at[clip_index,'tokenized caption'],
+                                                         df.at[i, 'tokenized caption']) for i in range(len(df))]
+    df = df.sort_values(['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
+    return df
 
 train = code.pdf.get_train_file()
 test = code.pdf.get_test_file()
 
-train = transform_caption(train)
+train = caption_similarity(transform_caption(train), 214566929)
+print(train.head())
+# sorted = train.sort_values(by = ['id'], ascending=False)
+# sorted = (sorted.reset_index()).drop(columns=['index'])
+# print(sorted.head())
 
-print(sentence_similarity(['Hi', 'there', 'this', 'is', 'cool'], ['Hello', 'I', 'am', 'an', 'idiot']))
+# print(sentence_similarity(['Hello', 'I', 'am', 'an', 'idiot'], ['Hi', 'there', 'this', 'is', 'cool']))
+# print(sentence_similarity(['Hi', 'there', 'this', 'is', 'cool'], ['Hello', 'I', 'am', 'an', 'idiot']))
