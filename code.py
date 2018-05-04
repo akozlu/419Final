@@ -19,13 +19,13 @@ class PandaFrames(object):
     def get_train_file(self):
         train = self.pandaframes[0]
         train = train.reset_index()
-        train = train.drop(columns=['Unnamed: 0', 'index'])
+        train = train.drop(['Unnamed: 0', 'index'], axis = 1)
         return train
 
     def get_test_file(self):
         test = self.pandaframes[1]
         test = test.reset_index()
-        test = test.drop(columns=['Unnamed: 0', 'index'])
+        test = test.drop(['Unnamed: 0', 'index'], axis = 1)
         return test
 
 
