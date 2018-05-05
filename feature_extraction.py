@@ -13,6 +13,8 @@ def load_whole_file(file_path):
 
 
 def load_train_and_test_files(file_path):
+    """Loads excel files into train and test dataframes"""
+
     data = pd.read_csv(file_path, encoding="ISO-8859-1")
 
     np.random.seed(seed=0)
@@ -28,11 +30,7 @@ def load_clips_categories(file_path):
 
 
 def url_is_alive(url):
-    """
-    Checks that a given URL is reachable.
-    :param url: A URL
-    :rtype: bool
-    """
+    """Checks that a given URL is reachable."""
     request = urllib.request.Request(url)
     request.get_method = lambda: 'HEAD'
 
@@ -85,23 +83,32 @@ def get_unknown_clip_categories(data_path, categories_path):
 
 class PandaFrames(object):
     def __init__(self, filepath):
-        self.pandaframes = load_train_and_test_files(filepath)
-        self.get_new_captions_for_train_file()
-        self.get_new_captions_for_test_file()
+        """Loads excel files into DataFrames and updated the captions of the videos."""
 
+        print("Loading training and test files into Panda Data Frames..")
+        self.pandaframes = load_train_and_test_files(filepath)
+        print("Panda Data Frames are ready.")
+        #self.get_new_captions_for_train_file()
+        #self.get_new_captions_for_test_file()
+        print("We are not extracting new captions temporarily. ")
     def get_train_file(self):
+        """Return Panda Dataframe Training File."""
         train = self.pandaframes[0]
         train = train.reset_index()
         train = train.drop(['Unnamed: 0', 'index'], axis=1)
         return train
 
     def get_test_file(self):
+        """Return Panda Dataframe Test File."""
+
         test = self.pandaframes[1]
         test = test.reset_index()
         test = test.drop(['Unnamed: 0', 'index'], axis=1)
         return test
 
     def get_new_captions_for_train_file(self):
+        """Gets extended captions for each video in Training Dataset"""
+
         print("Getting new captions for the train file...")
         train = self.get_train_file()
 
@@ -115,7 +122,7 @@ class PandaFrames(object):
 
                 content = vimeo_webpage.read()  # get content from webpage
                 soup = BeautifulSoup(content, 'html.parser')
-
+                print(id)
                 if soup.find('div', attrs={
                     'class': 'clip_details-description description-wrapper iris_desc'}) is not None:
                     # get the video description (all paragraphs instead of first paragraph
@@ -130,6 +137,8 @@ class PandaFrames(object):
         print("Finished getting new captions for the train file. ")
 
     def get_new_captions_for_test_file(self):
+        """Gets extended captions for each video in Test Dataset"""
+
         print("Getting new captions for the test file...")
 
         test = self.get_test_file()
@@ -157,11 +166,3 @@ class PandaFrames(object):
                     test.loc[index, 'caption'] = ' '.join(article_soup)  # update the caption of our train dataset
         print("Finished getting new captions for the test file.")
 
-
-#data = load_whole_file('similar-staff-picks-challenge-clips.csv')
-#print(len(data))
-
-#c_id = load_clips_categories('similar-staff-picks-challenge-clip-categories.csv')
-#print(len(c_id))
-#get_unknown_clip_categories('similar-staff-picks-challenge-clips.csv',
-                       #     'similar-staff-picks-challenge-clip-categories.csv')
