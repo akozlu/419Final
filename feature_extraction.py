@@ -90,7 +90,7 @@ class PandaFrames(object):
         print("Panda Data Frames are ready.")
         #self.get_new_captions_for_train_file()
         #self.get_new_captions_for_test_file()
-
+        print("We are not extracting new captions temporarily. ")
     def get_train_file(self):
         """Return Panda Dataframe Training File."""
         train = self.pandaframes[0]
