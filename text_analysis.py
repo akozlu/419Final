@@ -206,17 +206,76 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
 # train = transform_caption(pdf.get_train_file())
 # test = transform_caption(pdf.get_test_file())
 
-# Temporary initialization to work with initial captions
-train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv')[0]
-train = train.reset_index()
-train = train.drop(['Unnamed: 0', 'index'], axis=1)
-train = transform_caption(train)
-
-train = caption_similarity(train, 214566929, path_sim)
-print(train.head())
+# # Temporary initialization to work with initial captions
+# train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv')[0]
+# train = train.reset_index()
+# train = train.drop(['Unnamed: 0', 'index'], axis=1)
+# train = transform_caption(train)
+#
+# train = caption_similarity(train, 214566929, path_sim)
+# print(train.head())
 
 # print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
 #                           ['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code', 'all', 'day'],
 #                             lch_sim))
 # print(sentence_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
 #                                ['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code']))
+
+
+################################# CATEGORY MATCHING FOR FEATURE_EXTRACTION.PY #########################################
+
+
+def load_train_and_test_files(file_path):
+    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+    clip_categories = pd.read_csv('similar-staff-picks-challenge-clip-categories.csv')
+    category_map = pd.read_csv('similar-staff-picks-challenge-categories.csv')
+    # categories.set_index('category_id', inplace=True)
+    np.random.seed(seed=0)
+    indices = np.random.rand(len(data)) < 0.8
+    train = data[indices]
+    test = data[~indices]
+    return [train, test]
+
+
+# Function to map category IDs to category names
+def map_categories(clip_categories, category_map):
+    clip_categories['main categories'] = np.empty((len(clip_categories), 0)).tolist()
+    clip_categories['sub categories'] = np.empty((len(clip_categories), 0)).tolist()
+
+    for i in range(len(clip_categories)):
+        all_categories = clip_categories.at[i, 'categories'].split(', ')
+        for cat in all_categories:
+            cat_map = category_map[category_map['category_id'] == cat]
+            parent_id = cat_map.at[i, 'parent_id']
+            if parent_id == '0':
+                clip_categories.at[i, 'main categories'].append(cat_map.at[i, 'name'])
+            else:
+                parent_cat_map = category_map[category_map['category_id'] == parent_id]
+                clip_categories.at[i, 'sub categories'].append([cat_map.at[i, 'name'],
+                                                                parent_cat_map.at[i, 'name']])
+
+    return clip_categories
+
+
+# Function to append categories to initial dataframe, takes in two Pandas dataframes
+def insert_categories(data, categories):
+    data['main categories'] = np.empty((len(data), 0)).tolist()
+    data['sub categories'] = np.empty((len(data), 0)).tolist()
+    no_matching_clip_id = 0
+
+    for i in range(len(categories)):
+        clip_info = categories.iloc[i, :]
+        clip_id = clip_info.at[i, 'clip_id']
+        clip_id_index1 = data[data['id'] == clip_id]
+        clip_id_index2 = data[data['clip_id'] == clip_id]
+        if clip_id_index1 is None:
+            if clip_id_index2 is None:
+                no_matching_clip_id += 1
+            else:
+                data.at[(clip_id_index2.index[0]), 'main categories'] = clip_info.at[i, 'main categories']
+                data.at[(clip_id_index2.index[0]), 'sub categories'] = clip_info.at[i, 'sub categories']
+        else:
+            data.at[(clip_id_index1.index[0]), 'main categories'] = clip_info.at[i, 'main categories']
+            data.at[(clip_id_index1.index[0]), 'sub categories'] = clip_info.at[i, 'sub categories']
+
+    return data
