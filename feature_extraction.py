@@ -7,15 +7,63 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 
-def load_whole_file(file_path):
-    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+# Function to map category IDs to category names
+def map_categories(clip_categories, category_map):
+    clip_categories['main categories'] = np.empty((len(clip_categories), 0)).tolist()
+    clip_categories['sub categories'] = np.empty((len(clip_categories), 0)).tolist()
+
+    for i in range(len(clip_categories)):
+        all_categories = clip_categories.at[i, 'categories'].split(', ')
+        for cat in all_categories:
+            cat_map = category_map[category_map['category_id'] == int(cat)]
+            parent_id = cat_map.at[cat_map.index[0], 'parent_id']
+            if parent_id == 0:
+                clip_categories.at[i, 'main categories'].append(cat_map.at[cat_map.index[0], 'name'])
+            else:
+                parent_cat_map = category_map[category_map['category_id'] == parent_id]
+                clip_categories.at[i, 'sub categories'].append([cat_map.at[cat_map.index[0], 'name'],
+                    parent_cat_map.at[parent_cat_map.index[0], 'name']])
+
+    return clip_categories
+
+
+# Function to append categories to initial dataframe, takes in two Pandas dataframes
+def insert_categories(data, clip_categories):
+    data['main categories'] = np.empty((len(data), 0)).tolist()
+    data['sub categories'] = np.empty((len(data), 0)).tolist()
+    no_matching_clip_id = 0
+
+    for i in range(len(clip_categories)):
+        clip_info = clip_categories.iloc[[i]]
+        clip_id = clip_info.at[i, 'clip_id']
+        clip_id_index1 = data[data['id'] == clip_id]
+        clip_id_index2 = data[data['clip_id'] == clip_id]
+        if len(clip_id_index1) is 0:
+            if len(clip_id_index2) is 0:
+                no_matching_clip_id += 1
+            else:
+                data.at[(clip_id_index2.index[0]), 'main categories'] = clip_info.at[i, 'main categories']
+                data.at[(clip_id_index2.index[0]), 'sub categories'] = clip_info.at[i, 'sub categories']
+        else:
+            data.at[(clip_id_index1.index[0]), 'main categories'] = clip_info.at[i, 'main categories']
+            data.at[(clip_id_index1.index[0]), 'sub categories'] = clip_info.at[i, 'sub categories']
+
     return data
 
 
-def load_train_and_test_files(file_path):
+def load_whole_file(file_path, clip_category_file_path, category_map_file_path):
+    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+    clip_categories = pd.read_csv(clip_category_file_path)
+    category_map = pd.read_csv(category_map_file_path)
+    clip_categories = map_categories(clip_categories, category_map)
+    data = insert_categories(data, clip_categories)
+    return data
+
+
+def load_train_and_test_files(file_path, clip_category_file_path, category_map_file_path):
     """Loads excel files into train and test dataframes"""
 
-    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+    data = load_whole_file(file_path, clip_category_file_path, category_map_file_path)
 
     np.random.seed(seed=0)
     indices = np.random.rand(len(data)) < 0.8
@@ -41,9 +89,9 @@ def url_is_alive(url):
         return False
 
 
-def get_unknown_clip_categories(data_path, categories_path):
-    data = load_whole_file(data_path)
-    clip_categories = load_clips_categories(categories_path)
+def get_unknown_clip_categories(data_path, clip_category_file_path, category_map_file_path):
+    data = load_whole_file(data_path, clip_category_file_path, category_map_file_path)
+    clip_categories = load_clips_categories(clip_category_file_path)
     counter = 0
     clip_counter = 0
     print("Trying to extract categories for videos that do not have a category...")
@@ -82,11 +130,11 @@ def get_unknown_clip_categories(data_path, categories_path):
 
 
 class PandaFrames(object):
-    def __init__(self, filepath):
+    def __init__(self, filepath, clip_category_file_path, category_map_file_path):
         """Loads excel files into DataFrames and updated the captions of the videos."""
 
         print("Loading training and test files into Panda Data Frames..")
-        self.pandaframes = load_train_and_test_files(filepath)
+        self.pandaframes = load_train_and_test_files(filepath, clip_category_file_path, category_map_file_path)
         print("Panda Data Frames are ready.")
         #self.get_new_captions_for_train_file()
         #self.get_new_captions_for_test_file()
