@@ -184,10 +184,10 @@ def caption_similarity(df, clip_id, f_sim):
     df['caption similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     target_clip = df[df['id'] == clip_id]
-    df = df.drop([clip_index]).reset_index().drop(columns=['index'])
+    df = df.drop([clip_index]).reset_index().drop(['index'], axis = 1)
     df['caption similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
                                         df.at[i, 'tokenized caption'], f_sim) for i in range(len(df))]
-    df = df.sort_values(by=['caption similarity'], ascending=False).reset_index().drop(columns=['index'])
+    df = df.sort_values(by=['caption similarity'], ascending=False).reset_index().drop(['index'], axis = 1)
     return df
 
 
