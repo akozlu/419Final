@@ -210,18 +210,21 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
 # train = transform_caption(pdf.get_train_file())
 # test = transform_caption(pdf.get_test_file())
 
-# Temporary initialization to work with initial captions
-train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
-                                                     'similar-staff-picks-challenge-clip-categories.csv',
-                                                     'similar-staff-picks-challenge-categories.csv')[0]
-train = train.reset_index()
-train = train.drop(['Unnamed: 0', 'index'], axis=1)
-train = transform_caption(train)
-# # Count null captions
-# print('Number of NaN captions:', train['caption'].isnull().sum())
-#
-train = caption_similarity(train, 214566929, wup_sim)
-print(train.head())
+# # Temporary initialization to work with initial captions
+# train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
+#                                                      'similar-staff-picks-challenge-clip-categories.csv',
+#                                                      'similar-staff-picks-challenge-categories.csv')[0]
+# train = train.reset_index()
+# train = train.drop(['Unnamed: 0', 'index'], axis=1)
+# train = transform_caption(train)
+# # # Count null captions
+# # print('Number of NaN captions:', train['caption'].isnull().sum())
+# #
+# train = caption_similarity(train, 214566929, path_sim)
+# print('Video:')
+# print(train[train['id'] == 214566929])
+# print('Similar videos:')
+# print(train.head())
 
 # print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
 #                           ['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code', 'all', 'day'],
