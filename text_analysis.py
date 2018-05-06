@@ -42,7 +42,7 @@ def transform_caption(dataframe):
     dataframe['tokenized caption'] = ""
     for i in range(len(dataframe)):
         caption = dataframe.at[i, 'caption']
-        if caption is np.Nan:
+        if caption is np.NaN:
             dataframe.at[i, 'tokenized caption'] = []
         else:
             dataframe.at[i, 'tokenized caption'] = tokenize(str(dataframe.at[i, 'caption']))
@@ -181,13 +181,13 @@ def sentence_similarity(sentence1, sentence2, f_sim):
 # The argument 'f_sim' should be one of [path_sim, lch_sim, wup_sim]
 def caption_similarity(df, clip_id, f_sim):
     # df = transform_caption(df)
-    df['caption path similarity'] = 0.0
+    df['caption similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     target_clip = df[df['id'] == clip_id]
     df = df.drop([clip_index]).reset_index().drop(columns=['index'])
-    df['caption path similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
+    df['caption similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
                                         df.at[i, 'tokenized caption'], f_sim) for i in range(len(df))]
-    df = df.sort_values(by=['caption path similarity'], ascending=False).reset_index().drop(columns=['index'])
+    df = df.sort_values(by=['caption similarity'], ascending=False).reset_index().drop(columns=['index'])
     return df
 
 
@@ -216,11 +216,11 @@ train = feature_extraction.load_train_and_test_files('similar-staff-picks-challe
                                                      'similar-staff-picks-challenge-categories.csv')[0]
 train = train.reset_index()
 train = train.drop(['Unnamed: 0', 'index'], axis=1)
-# train = transform_caption(train)
+train = transform_caption(train)
 # # Count null captions
 # print('Number of NaN captions:', train['caption'].isnull().sum())
 #
-# train = caption_similarity(train, 214566929, path_sim)
+train = caption_similarity(train, 214566929, wup_sim)
 print(train.head())
 
 # print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
