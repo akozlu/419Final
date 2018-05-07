@@ -7,6 +7,8 @@ from sklearn.decomposition import PCA
 
 def calculate_distance(a,b,mode,p = 3):
     """ Calculates distances between two vectors"""
+    if mode not in ['cosine','minkowsky', 'euclidean','manhattan','chebyshev']:
+        raise ValueError('Distance Mode not available')
     
     if mode == 'cosine':
         norm_a = np.linalg.norm(a)
