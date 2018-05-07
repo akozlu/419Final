@@ -27,7 +27,7 @@ import feature_extraction
 
 
 #Extracting Dataset
-pdf = feature_extraction.PandaFrames("similar-staff-picks-challenge-clips.csv")
+pdf = feature_extraction.PandaFrames("similar-staff-picks-challenge-clips.csv", "similar-staff-picks-challenge-clip-categories.csv", "similar-staff-picks-challenge-categories.csv")
 data1 = pdf.get_train_file()
 data2 = pdf.get_test_file()
 all_data = pd.concat([data1, data2])
@@ -188,7 +188,6 @@ def compare_all(clip_id, images, k, distance, show):
             plt.figure()
             plt.imshow(images[index])
     return(scores_df, top_k)
-
 
 
 #Example Usage:
