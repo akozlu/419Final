@@ -56,7 +56,7 @@ class FeatureSpace(object):
     
     def generate_final_vector(self, n_final_tsne, n_pca_text, misc_features, pca_img, n_pca_img,n_tsne_img):
         """ Generates Text, Image, Misc Vectors and Perform Final t-SNE"""
-        print("Generating Transformed Feature Space")
+        print("Generating Transformed Feature Space: ETA 2 min")
         img_vec = self.generate_img_vector(n_tsne = n_tsne_img, pca = pca_img, n_pca = n_pca_img)
         txt_vec = self.generate_text_vector(n_components = n_pca_text)
         misc_vec = self.generate_misc_vector(features = misc_features)
@@ -78,6 +78,17 @@ class FeatureSpace(object):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(plot_vect[:,0],plot_vect[:,1],plot_vect[:,2])
+        
+    def get_similar(self, clip_id, mode = 'euclidean', p = 3):
+        clip_index = self.data.index[self.data['id'] == clip_id]
+        target_clip = self.final_vect[clip_index][0]
+        distances = [(idx, ot.calculate_distance(target_clip, clip, mode, p)) for idx, clip in enumerate(self.final_vect)]
+        distances = sorted(distances, key = lambda x: x[1])
+        self.distances = distances
+        top_10 = distances[:10]
+        top_10_indexes = [item[0] for item in top_10]
+        top_10_clips = [data['id'][index] for index in top_10_indexes]
+        return top_10_clips
         
 def extract_data_with_thumbid(path):
     """ Extract data as formatted dataframe"""
@@ -108,4 +119,4 @@ def vectorize_images(pickle_file, df):
                 vect_img_mtx += [list(map(float,item[1]))]              
     return vect_img_mtx
 
-#ft = FeatureSpace("similar-staff-picks-challenge-clips.csv", 'vect_images')
+ft = FeatureSpace("similar-staff-picks-challenge-clips.csv", 'vect_images')
