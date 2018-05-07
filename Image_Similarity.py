@@ -15,9 +15,27 @@ import pickle
 import os
 import matplotlib.image as mpimg
 import pandas as pd
+from distance_transformation import *
+
 
 #Importing Data
+all_data = ft.load_whole_file("similar-staff-picks-challenge-clips.csv", "similar-staff-picks-challenge-clip-categories.csv", "similar-staff-picks-challenge-categories.csv")             
 data = extract_data_with_thumbid("similar-staff-picks-challenge-clips.csv")
+
+#Removing those without Columns
+def remove_empty_categories(data): 
+    data = data.reindex(index=data.index[::-1])
+    rows_to_delete= []
+    for i in range(len(data)):
+        if data['main categories'].values[i] == []:
+            rows_to_delete.append(i)
+    data.drop(data.index[rows_to_delete], inplace = True)
+    data.reset_index(inplace = True)
+    return(data)
+all_data = remove_empty_categories(all_data)
+data = remove_empty_categories(data)
+
+
 images = vectorize_images('vect_images', data)
 dir_path = os.path.dirname(os.path.realpath('__file__'))
 webppath = dir_path + "/WebP_Files/"
@@ -25,7 +43,7 @@ jpgpath = dir_path + "/samples/"
 
 def image_list(color):
     image_list = []
-    
+    ''' Saving Images to List '''
     for image in os.listdir(jpgpath):
         if '.DS_Store' in image: #This may sometimes be found in a folder preventing uploads
             continue
@@ -55,6 +73,8 @@ def image_similarity(clip_id, p = 3, all_images = rgb_images, data = data, image
     scores_df['Distance'] = d
     top_k= scores_df.sort_values(by=['Distance'])[1:k]
     
+    
+    
     #Show for plotting
     if show == True:
         indices = top_k.index.get_values()
@@ -64,15 +84,17 @@ def image_similarity(clip_id, p = 3, all_images = rgb_images, data = data, image
     plt.figure()
     plt.imshow(rgb_images[np.where(data['id'] == clip_id)[0][0]])
     plt.title('Original Image')
-            
-    return(scores_df, top_k)
+    return(top_k)
 #%%
 #Example:
-clip_id = data['id'][2822]
+clip_id = data['id'][1182]
 k = 10
 mode1 = 'euclidean'
-show = True
-a, b = image_similarity(clip_id = clip_id, mode = mode1, k = k, show = True)
+top_clips = image_similarity(clip_id = clip_id, mode = mode1, k = k, show = False)
+
+
+    
+
 
     
 
