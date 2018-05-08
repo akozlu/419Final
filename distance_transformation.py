@@ -19,13 +19,13 @@ class FeatureSpace(object):
         print("Extracting Vectorized Images")
         self.images = vectorize_images(pickled_images, self.data)
         
-    def generate_text_vector(self, n_components):
+    def generate_text_vector(self):
         """ Transform Text to (n_clips x n_components) Matrix"""
         print("Generating Text Vector")
         print("        Generating TF IDF Caption Vector")
         tfidf_captions = tf_idf_captions(self.data)
         print("        Performing SVD on Sparse TF IDF Matrix")
-        svd_dp = TruncatedSVD(n_components = n_components)
+        svd_dp = TruncatedSVD(n_components =100)
         self.text_vect = svd_dp.fit_transform(tfidf_captions)
         return self.text_vect
         
@@ -36,48 +36,51 @@ class FeatureSpace(object):
         self.misc_vect = np.array(misc_vect)
         return self.misc_vect
     
-    def generate_img_vector(self, n_tsne, pca, n_pca = 10):
+    def generate_img_vector(self, n_pca = 0.6):
         """ Transform Images to (n_clips x n_tsne) Matrix"""
         print("Generating Image Vector")
         images = self.images
         # Perform PCA prior to t-SNE
-        if pca:
-            print("       Performing PCA prior to t-SNE")
-            sc = StandardScaler()
-            images = sc.fit_transform(self.images)
-            pca_dp = PCA(n_components=n_pca)
-            images = pca_dp.fit_transform(images)
-        print("       Performing t-SNE")
-        # Perform t-SNE
-        tsne_clt = TSNE(n_components = n_tsne, verbose = 1, perplexity = 40, n_iter = 300)
-        tsne_predict = tsne_clt.fit_transform(images)
-        self.img_vect = tsne_predict
+        print("       Performing PCA on CNN output")
+        sc = StandardScaler()
+        images = sc.fit_transform(self.images)
+        if n_pca < 1:
+            pca_dp = PCA(n_components= n_pca, svd_solver = 'full')
+        else:
+             pca_dp = PCA(n_components= n_pca)
+        self.pca = pca_dp
+        images = pca_dp.fit_transform(images)
+        self.img_vect = images
         return self.img_vect
     
-    def generate_final_vector(self, n_final_tsne, n_pca_text, misc_features, pca_img, n_pca_img,n_tsne_img):
+    def generate_final_vector(self, misc_features,tsne_perplexity, tsne_iter, n_pca_img = 0.6):
         """ Generates Text, Image, Misc Vectors and Perform Final t-SNE"""
-        print("Generating Transformed Feature Space: ETA 2 min")
-        img_vec = self.generate_img_vector(n_tsne = n_tsne_img, pca = pca_img, n_pca = n_pca_img)
-        txt_vec = self.generate_text_vector(n_components = n_pca_text)
+        print("Generating Transformed Feature Space: ETA <1 min")
+        img_vec = self.generate_img_vector(n_pca_img)
+        txt_vec = self.generate_text_vector()
         misc_vec = self.generate_misc_vector(features = misc_features)
         self.test = zip(txt_vec, misc_vec, img_vec)
         final_vect = [np.concatenate([txt,misc,img]) for txt,misc,img in zip(txt_vec, misc_vec, img_vec)]
         # t-SNE
         print("Performing Final t-SNE")
-        tsne_clt = TSNE(n_components = n_final_tsne, verbose = 1, perplexity = 40, n_iter = 300)
+        tsne_clt = TSNE(n_components = 2, verbose = 1, perplexity = tsne_perplexity, n_iter = tsne_iter)
         self.final_vect = tsne_clt.fit_transform(final_vect)
+        self.tsne = tsne_clt
         return self.final_vect
         
-    def plot_fspace_3d(self, fspace):
+    def plot_fspace_2d(self, fspace):
         """ Plot any Intermediate or Final Feature Space"""
         """ fspace in ['text', 'misc', 'img', 'final']"""
         if fspace == 'text': plot_vect = self.text_vect
         if fspace == 'misc': plot_vect = self.misc_vect
         if fspace == 'img': plot_vect = self.img_vect
         if fspace == 'final': plot_vect = self.final_vect
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(plot_vect[:,0],plot_vect[:,1],plot_vect[:,2])
+        plt.clf()
+        plt.scatter(plot_vect[:,0], plot_vect[:,1])
+        plt.title('Final Feature Space (t-SNE Two Principal Components)')
+        plt.xlabel('First t-SNE Component')
+        plt.ylabel('Second t-SNE Component')
+        plt.show()
         
     def get_similar(self, clip_id, mode = 'euclidean', p = 3):
         clip_index = self.data.index[self.data['id'] == clip_id]
