@@ -9,6 +9,8 @@ from nltk.corpus import wordnet as wn
 import re
 import string
 import feature_extraction
+import gensim
+from nltk.tokenize import word_tokenize
 
 # # UNCOMMENT THE TWO LINES BELOW TO RUN FOR THE FIRST TIME
 # nltk.download('wordnet')
@@ -21,6 +23,7 @@ lemmatizer = WordNetLemmatizer()
 stopWords = set(stopwords.words('english'))
 # Regex to remove punctuation
 regex = re.compile('[%s]' % re.escape(string.punctuation))
+
 
 # Function to tokenize a caption
 def tokenize(caption):
@@ -46,6 +49,17 @@ def transform_caption(dataframe):
             dataframe.at[i, 'tokenized caption'] = []
         else:
             dataframe.at[i, 'tokenized caption'] = tokenize(str(dataframe.at[i, 'caption']))
+    return dataframe
+
+
+def transform_caption_for_gensim(dataframe):
+    dataframe['tokenized caption'] = ""
+    for i in range(len(dataframe)):
+        caption = dataframe.at[i, 'caption']
+        if caption is np.NaN:
+            dataframe.at[i, 'tokenized caption'] = []
+        else:
+            dataframe.at[i, 'tokenized caption'] = [w.lower() for w in word_tokenize(str(dataframe.at[i, 'caption']))]
     return dataframe
 
 
@@ -184,10 +198,10 @@ def caption_similarity(df, clip_id, f_sim):
     df['caption similarity'] = 0.0
     clip_index = df[df['id'] == clip_id].index[0]
     target_clip = df[df['id'] == clip_id]
-    df = df.drop([clip_index]).reset_index().drop(['index'], axis = 1)
+    df = df.drop([clip_index]).reset_index().drop(['index'], axis=1)
     df['caption similarity'] = [sentence_similarity(target_clip.at[clip_index, 'tokenized caption'],
-                                        df.at[i, 'tokenized caption'], f_sim) for i in range(len(df))]
-    df = df.sort_values(by=['caption similarity'], ascending=False).reset_index().drop(['index'], axis = 1)
+                                                    df.at[i, 'tokenized caption'], f_sim) for i in range(len(df))]
+    df = df.sort_values(by=['caption similarity'], ascending=False).reset_index().drop(['index'], axis=1)
     return df
 
 
@@ -205,10 +219,35 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
             accuracies += 1
     return accuracies / len(df)
 
+
+# Removing those without Columns
+def remove_empty_categories(data):
+    data = data.reindex(index=data.index[::-1])
+    rows_to_delete = []
+    for i in range(len(data)):
+        if data['main categories'].values[i] == []:
+            rows_to_delete.append(i)
+    data.drop(data.index[rows_to_delete], inplace=True)
+    data.reset_index(inplace=True)
+    return (data)
+
+
 # # Normal initialization to get online captions
-# pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv')
-# train = transform_caption(pdf.get_train_file())
-# test = transform_caption(pdf.get_test_file())
+pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv',
+                                     'similar-staff-picks-challenge-clip-categories.csv',
+                                     'similar-staff-picks-challenge-categories.csv')
+train_file = pdf.get_train_file()
+test_file = pdf.get_test_file()
+print(len(train_file))
+print(len(test_file))
+train_text = remove_empty_categories(train_file)
+test_text = remove_empty_categories(test_file)
+
+print(len(train_text))
+print(len(test_text))
+
+train = transform_caption_for_gensim(train_text)
+test = transform_caption_for_gensim(test_text)
 
 # # Temporary initialization to work with initial captions
 # train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
@@ -218,14 +257,24 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
 # train = train.drop(['Unnamed: 0', 'index'], axis=1)
 # train = transform_caption(train)
 # # # Count null captions
-# # print('Number of NaN captions:', train['caption'].isnull().sum())
+print('Number of NaN captions:', train['caption'].isnull().sum())
 # #
 # train = caption_similarity(train, 214566929, path_sim)
 # print('Video:')
 # print(train[train['id'] == 214566929])
 # print('Similar videos:')
-# print(train.head())
+# print(train.head(n=3 ))
+for id in train_text['id']:
+    similar_captions = caption_similarity(train, id, path_sim)
 
+    print('Currently investigating Video ID: {}'.format(id))
+    index = train_text.loc[train_text['id'] == id].index[0]
+    print('Category of this video was {}'.format(train_text.loc[index, 'main categories']))
+    print('Similar videos:')
+    print((similar_captions[['main categories']].head(10)))
+    # print('The main categories of most similar videos were {}'.format(similar_captions['main categories']))
+    print("stop")
+    print("ali")
 # print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
 #                           ['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code', 'all', 'day'],
 #                             lch_sim))
