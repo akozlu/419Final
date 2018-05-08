@@ -1,24 +1,25 @@
+import os
 import re
 import string
 from collections import *
 from itertools import *
+
 import gensim
-import nltk
+import matplotlib.pyplot as plt
 import numpy as np
 from nltk import pos_tag
 from nltk.corpus import stopwords
 from nltk.corpus import wordnet as wn
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import os
 
 import feature_extraction
 
 # # Uncomment the following 4 lines when running code for the first time
-nltk.download()
-nltk.download('wordnet')
-nltk.download('stopwords')
-nltk.download('averaged_perceptron_tagger')
+# nltk.download()
+# nltk.download('wordnet')
+# nltk.download('stopwords')
+# nltk.download('averaged_perceptron_tagger')
 
 # Initialize WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
@@ -235,19 +236,8 @@ def remove_empty_categories(data):
     return (data)
 
 
-# # Normal initialization to get online captions
-# pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv',
-#                                     'similar-staff-picks-challenge-clip-categories.csv',
-#                                    'similar-staff-picks-challenge-categories.csv')
-# train_file = pdf.get_train_file()
-# test_file = pdf.get_test_file()
-
-
-# test_text = remove_empty_categories(test_file)
-
-
-# train = transform_caption(train_text)
-# test = transform_caption(test_text)
+# This class creates a tf-IDF model based on textual features and calculates purity and accuracy scores.
+# It also provides accuracy scores for different thresholds. (threshold = number of documents out of top 10 that we consider similar)
 class TextualAccuracy(object):
     def __init__(self, filepath, clip_category_file_path, category_map_file_path, threshold):
         dataset = feature_extraction.load_whole_file(filepath,
@@ -273,16 +263,18 @@ class TextualAccuracy(object):
 
         correct_classifications = 0
 
+        purity_scores = []
+        accuracy_scores = []
         for id in self.train_text['id']:  # For each video in our dataset 
 
             index = self.train_text.loc[self.train_text['id'] == id].index[0]  # get its index 
             caption = self.train_text.loc[index, 'caption']  # find the associated caption 
             original_category = self.train_text.loc[index, 'main categories']  # Get categories of that video 
-            print('Category of this video was {}'.format(original_category))
+            # print('Category of this video was {}'.format(original_category))
 
             query_doc = [w.lower() for w in word_tokenize(str(caption)) if
                          w not in stopWords]  # tokenize caption of that video 
-            # print(query_doc)
+
             query_doc_bow = self.dictionary.doc2bow(query_doc)
 
             query_doc_tf_idf = self.tf_idf[query_doc_bow]  # create tf_idf_model of that query (video) 
@@ -303,27 +295,55 @@ class TextualAccuracy(object):
             # Calculate how many of these categories are the same with original category 
             similar_category_counter = 0
             counter = Counter(categories)
+
+            # calculate purity score
+            max_category = max(counter, key=counter.get)
+            purity_scores.append(float(counter[max_category] / len(categories)))
+
             for cat in original_category:
                 similar_category_counter = similar_category_counter + counter[cat]
 
+            # calculate accuracy score
+            accuracy_scores.append(float(similar_category_counter / len(categories)))
             # If the number is above a certain threshold (i.e. 3 out of 10), count it as correct classification 
             if (similar_category_counter > self.threshold):
                 correct_classifications = correct_classifications + 1
 
-        # print('The main categories of most similar videos were {}'.format(categories))
-        # print('LENGTH OF DATASET {}'.format(len(train_text)))
         accuracy = float(correct_classifications / len(self.train_text))
-        print("The accuracy of TF-IDF Model for a threshold of {} documents out of 10 was {}".format(self.threshold,
-                                                                                                     accuracy))
+        print("The purity of TF-IDF Model was: {}".format(np.asarray(purity_scores).mean()))
+        print("The accuracy of TF-IDF Model was: {}".format(np.asarray(accuracy_scores).mean()))
+
+        # print("The accuracy of TF-IDF Model for a threshold of {} documents out of 10 was {}".format(self.threshold,
+        #                                                                                            accuracy))
+        return accuracy
 
 
-#TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
-#                            'similar-staff-picks-challenge-clip-categories.csv',
-#                            'similar-staff-picks-challenge-categories.csv', 3)
+#accuracy_scores = []
+#threshold = [1, 2, 3, 4, 5]
 #
-#TextModel.calculate_tf_idf_accuracy()
-
+#for thres in threshold:
+#    TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
+#                                'similar-staff-picks-challenge-clip-categories.csv',
+#                                'similar-staff-picks-challenge-categories.csv', thres)
+#    acc = TextModel.calculate_tf_idf_accuracy()
+#    accuracy_scores.append(acc)
+#
+#fig, ax = plt.subplots(1, 1)
+#plt.plot(threshold, accuracy_scores)
+#plt.title('Tf-Idf Classification Accuracy')
+#plt.xlabel('Distance Metric')
+#plt.ylabel('Accuracy')
+#ax.set_xticks(range(5))
+#t = ['1', '2', '3', '4', '5']
+#ax.set_xticklabels(t, minor=False, rotation=0)
+#plt.legend(['Classification Accuracy'])
+#plt.show()
 """
+plt.xlabel('Iterations')
+plt.ylabel('Accuracy of Test Data in %')
+plt.plot(xi, accuracy_scores, marker='.', linestyle='-')
+plt.legend()
+plt.show()
 # # Temporary initialization to work with initial captions
 # train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
 #                                                      'similar-staff-picks-challenge-clip-categories.csv',
@@ -350,11 +370,5 @@ for id in train_text['id']:
     print('Similar videos:')
     print((similar_captions[['main categories']].head(10)))
     # print('The main categories of most similar videos were {}'.format(similar_captions['main categories']))
-    print("stop")
-    print("ali")
-# print(sentence_similarity(['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code'],
-#                           ['Hi', 'my', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code', 'all', 'day'],
-#                             lch_sim))
-# print(sentence_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
-#                                ['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code']))
+
 """
