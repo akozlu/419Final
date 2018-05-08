@@ -317,50 +317,23 @@ class TextualAccuracy(object):
         #                                                                                            accuracy))
         return accuracy
 
+#To Run the TF-IDF Model Purity and Accuracy Scores, run the following string:
 
-#accuracy_scores = []
-#threshold = [1, 2, 3, 4, 5]
-#
-#for thres in threshold:
-#    TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
-#                                'similar-staff-picks-challenge-clip-categories.csv',
-#                                'similar-staff-picks-challenge-categories.csv', thres)
-#    acc = TextModel.calculate_tf_idf_accuracy()
-#    accuracy_scores.append(acc)
-#
-#fig, ax = plt.subplots(1, 1)
-#plt.plot(threshold, accuracy_scores)
-#plt.title('Tf-Idf Classification Accuracy')
-#plt.xlabel('Distance Metric')
-#plt.ylabel('Accuracy')
-#ax.set_xticks(range(5))
-#t = ['1', '2', '3', '4', '5']
-#ax.set_xticklabels(t, minor=False, rotation=0)
-#plt.legend(['Classification Accuracy'])
-#plt.show()
 """
-plt.xlabel('Iterations')
-plt.ylabel('Accuracy of Test Data in %')
-plt.plot(xi, accuracy_scores, marker='.', linestyle='-')
-plt.legend()
-plt.show()
-# # Temporary initialization to work with initial captions
-# train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
-#                                                      'similar-staff-picks-challenge-clip-categories.csv',
-#                                                      'similar-staff-picks-challenge-categories.csv')[0]
-# train = train.reset_index()
-# train = train.drop(['Unnamed: 0', 'index'], axis=1)
-# train = transform_caption(train)
-# # # Count null captions
+TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
+                           'similar-staff-picks-challenge-clip-categories.csv',
+                            'similar-staff-picks-challenge-categories.csv', 3)    
+acc = TextModel.calculate_tf_idf_accuracy()
+
+"""
 
 
-print('Number of NaN captions:', train['caption'].isnull().sum())
-# #
-# train = caption_similarity(train, 214566929, path_sim)
-# print('Video:')
-# print(train[train['id'] == 214566929])
-# print('Similar videos:')
-# print(train.head(n=3 ))
+
+#Word-net Model Example usage
+
+"""
+
+#Word-net Model Example usage 
 for id in train_text['id']:
     similar_captions = caption_similarity(train, id, path_sim)
 
