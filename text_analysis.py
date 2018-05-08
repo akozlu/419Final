@@ -15,10 +15,10 @@ import os
 import feature_extraction
 
 # # Uncomment the following 4 lines when running code for the first time
-# nltk.download()
-# nltk.download('wordnet')
-# nltk.download('stopwords')
-# nltk.download('averaged_perceptron_tagger')
+nltk.download()
+nltk.download('wordnet')
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
 
 # Initialize WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
@@ -317,11 +317,11 @@ class TextualAccuracy(object):
                                                                                                      accuracy))
 
 
-TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
-                            'similar-staff-picks-challenge-clip-categories.csv',
-                            'similar-staff-picks-challenge-categories.csv', 3)
-
-TextModel.calculate_tf_idf_accuracy()
+#TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
+#                            'similar-staff-picks-challenge-clip-categories.csv',
+#                            'similar-staff-picks-challenge-categories.csv', 3)
+#
+#TextModel.calculate_tf_idf_accuracy()
 
 """
 # # Temporary initialization to work with initial captions
