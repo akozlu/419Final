@@ -250,7 +250,7 @@ class TextualAccuracy(object):
         self.training_documents = docs[0]
         self.tokens_id_dict = docs[1]
 
-        # creating gensim TF-IDF, Similarity Models 
+        # creating gensim TF-IDF, Similarity Models
         self.dictionary = gensim.corpora.Dictionary(self.training_documents)
         self.corpus = [self.dictionary.doc2bow(gen_doc) for gen_doc in self.training_documents]
         self.tf_idf = gensim.models.TfidfModel(self.corpus)
@@ -265,34 +265,34 @@ class TextualAccuracy(object):
 
         purity_scores = []
         accuracy_scores = []
-        for id in self.train_text['id']:  # For each video in our dataset 
+        for id in self.train_text['id']:  # For each video in our dataset
 
-            index = self.train_text.loc[self.train_text['id'] == id].index[0]  # get its index 
-            caption = self.train_text.loc[index, 'caption']  # find the associated caption 
-            original_category = self.train_text.loc[index, 'main categories']  # Get categories of that video 
+            index = self.train_text.loc[self.train_text['id'] == id].index[0]  # get its index
+            caption = self.train_text.loc[index, 'caption']  # find the associated caption
+            original_category = self.train_text.loc[index, 'main categories']  # Get categories of that video
             # print('Category of this video was {}'.format(original_category))
 
             query_doc = [w.lower() for w in word_tokenize(str(caption)) if
-                         w not in stopWords]  # tokenize caption of that video 
+                         w not in stopWords]  # tokenize caption of that video
 
             query_doc_bow = self.dictionary.doc2bow(query_doc)
 
-            query_doc_tf_idf = self.tf_idf[query_doc_bow]  # create tf_idf_model of that query (video) 
+            query_doc_tf_idf = self.tf_idf[query_doc_bow]  # create tf_idf_model of that query (video)
 
             similarity_scores = (
                 self.similarity_model[query_doc_tf_idf])  # Find similarity scores with all other videos
-            top_10 = (similarity_scores.argsort()[-10:][::-1])  # Get top 10 similarity scores 
+            top_10 = (similarity_scores.argsort()[-10:][::-1])  # Get top 10 similarity scores
             similar_category_list = []
 
-            # This loop tracks indexes of these top scores and finds the main categories of the videos associated with top-10 similarity scores 
+            # This loop tracks indexes of these top scores and finds the main categories of the videos associated with top-10 similarity scores
             for s in top_10:
                 i = (self.tokens_id_dict[tuple(self.training_documents[int(s)])])
                 index = self.train_text.loc[self.train_text['id'] == i].index[0]
                 similar_category_list.append((self.train_text.loc[index, 'main categories']))
 
-            categories = list(chain(*similar_category_list))  # now we have all categories of these videos in a list 
+            categories = list(chain(*similar_category_list))  # now we have all categories of these videos in a list
 
-            # Calculate how many of these categories are the same with original category 
+            # Calculate how many of these categories are the same with original category
             similar_category_counter = 0
             counter = Counter(categories)
 
@@ -305,7 +305,7 @@ class TextualAccuracy(object):
 
             # calculate accuracy score
             accuracy_scores.append(float(similar_category_counter / len(categories)))
-            # If the number is above a certain threshold (i.e. 3 out of 10), count it as correct classification 
+            # If the number is above a certain threshold (i.e. 3 out of 10), count it as correct classification
             if (similar_category_counter > self.threshold):
                 correct_classifications = correct_classifications + 1
 
@@ -317,50 +317,23 @@ class TextualAccuracy(object):
         #                                                                                            accuracy))
         return accuracy
 
+#To Run the TF-IDF Model Purity and Accuracy Scores, run the following string:
 
-#accuracy_scores = []
-#threshold = [1, 2, 3, 4, 5]
-#
-#for thres in threshold:
-#    TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
-#                                'similar-staff-picks-challenge-clip-categories.csv',
-#                                'similar-staff-picks-challenge-categories.csv', thres)
-#    acc = TextModel.calculate_tf_idf_accuracy()
-#    accuracy_scores.append(acc)
-#
-#fig, ax = plt.subplots(1, 1)
-#plt.plot(threshold, accuracy_scores)
-#plt.title('Tf-Idf Classification Accuracy')
-#plt.xlabel('Distance Metric')
-#plt.ylabel('Accuracy')
-#ax.set_xticks(range(5))
-#t = ['1', '2', '3', '4', '5']
-#ax.set_xticklabels(t, minor=False, rotation=0)
-#plt.legend(['Classification Accuracy'])
-#plt.show()
 """
-plt.xlabel('Iterations')
-plt.ylabel('Accuracy of Test Data in %')
-plt.plot(xi, accuracy_scores, marker='.', linestyle='-')
-plt.legend()
-plt.show()
-# # Temporary initialization to work with initial captions
-# train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
-#                                                      'similar-staff-picks-challenge-clip-categories.csv',
-#                                                      'similar-staff-picks-challenge-categories.csv')[0]
-# train = train.reset_index()
-# train = train.drop(['Unnamed: 0', 'index'], axis=1)
-# train = transform_caption(train)
-# # # Count null captions
+TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
+                           'similar-staff-picks-challenge-clip-categories.csv',
+                            'similar-staff-picks-challenge-categories.csv', 3)    
+acc = TextModel.calculate_tf_idf_accuracy()
+
+"""
 
 
-print('Number of NaN captions:', train['caption'].isnull().sum())
-# #
-# train = caption_similarity(train, 214566929, path_sim)
-# print('Video:')
-# print(train[train['id'] == 214566929])
-# print('Similar videos:')
-# print(train.head(n=3 ))
+
+#Word-net Model Example usage
+
+"""
+
+#Word-net Model Example usage 
 for id in train_text['id']:
     similar_captions = caption_similarity(train, id, path_sim)
 

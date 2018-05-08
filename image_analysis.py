@@ -25,9 +25,10 @@ import sys
 import numpy as np
 import feature_extraction
 
-
-#Extracting Dataset
-pdf = feature_extraction.PandaFrames("similar-staff-picks-challenge-clips.csv", "similar-staff-picks-challenge-clip-categories.csv", "similar-staff-picks-challenge-categories.csv")
+# Extracting Dataset
+pdf = feature_extraction.PandaFrames("similar-staff-picks-challenge-clips.csv",
+                                     "similar-staff-picks-challenge-clip-categories.csv",
+                                     "similar-staff-picks-challenge-categories.csv")
 data1 = pdf.get_train_file()
 data2 = pdf.get_test_file()
 all_data = pd.concat([data1, data2])
@@ -81,6 +82,7 @@ class Scraper:
             for chunk in r.iter_content(chunk_size=1024):
                 f.write(chunk)
 
+
 if __name__ == '__main__':
     dir_path = os.path.dirname(os.path.realpath('__file__'))
     for idx, image in enumerate(clips['thumbnail']):
@@ -88,7 +90,8 @@ if __name__ == '__main__':
         scraper.visit_url(image, 1)
         scraper.download_image(image)
 
-#%% Importing images as jpg
+
+# %% Importing images as jpg
 def import_jpeg():
     dir_path = os.path.dirname(os.path.realpath('__file__'))
     if not os.path.exists(jpgpath):
@@ -103,22 +106,25 @@ def import_jpeg():
         im.save(jpgpath + thumbnail[:-5] + ".jpg", "jpeg")
     os.chdir(dir_path)
 
-#Grayscale Conversion
+
+# Grayscale Conversion
 def rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.299, 0.587, 0.114])
 
-#Importing List of Images
+
+# Importing List of Images
 def image_list(color):
     image_list = []
     for image in os.listdir(jpgpath):
-        if '.DS_Store' in image: #This may sometimes be found in a folder preventing uploads
+        if '.DS_Store' in image:  # This may sometimes be found in a folder preventing uploads
             continue
         img = mpimg.imread(image)
         if color == "gray":
             image_list.append(rgb2gray(img))
         elif color == "rgb":
             image_list.append(img)
-    return(image_list)
+    return (image_list)
+
 
 def hog_image(color):
     img_converted = []
@@ -128,13 +134,15 @@ def hog_image(color):
     if color == "rgb":
         for k, image in enumerate(rgb_images):
             img_converted.append(feature.hog(image))
-    return(img_converted)
+    return (img_converted)
 
-#Extracting List of Images
+
+# Extracting List of Images
 os.chdir(jpgpath)
 import_jpeg()
 gray_images = image_list("gray")
 rgb_images = image_list("rgb")
+
 
 # %%
 ###############################################################################
@@ -154,8 +162,8 @@ def normalize(arr):
 def compare_images(img1, img2, distance):
     # normalize to compensate for exposure difference, this may be unnecessary
     # consider disabling it
-#    img1 = normalize(img1)
-#    img2 = normalize(img2)
+    #    img1 = normalize(img1)
+    #    img2 = normalize(img2)
     # calculate the difference and its norms
     diff = img1 - img2  # elementwise for scipy arrays
     if distance == "m":
@@ -164,7 +172,8 @@ def compare_images(img1, img2, distance):
         d = norm(diff.ravel(), 0)  # Zero norm
     return (d)
 
-#clip_id as int, image(gray or rgb), k for top returned, and 'z' or 'm' for distance type
+
+# clip_id as int, image(gray or rgb), k for top returned, and 'z' or 'm' for distance type
 def compare_all(clip_id, images, k, distance, show):
     d = []
     test_image_index = np.where(clips['id'] == clip_id)[0][0]
@@ -173,30 +182,29 @@ def compare_all(clip_id, images, k, distance, show):
         if idx == test_image_index:
             d.append(0)
             continue
-        if np.shape(item) == (439,780):
+        if np.shape(item) == (439, 780):
             item = item[1:]
         temp = compare_images(test_image, item, distance)
         d.append(temp)
-    ddf = pd.DataFrame(d, columns = ['Norm Distance'])
-    scores_df  = clips
+    ddf = pd.DataFrame(d, columns=['Norm Distance'])
+    scores_df = clips
     scores_df['Norm Distance'] = d
-    top_k= scores_df.sort_values(by=['Norm Distance'])[1:k]
+    top_k = scores_df.sort_values(by=['Norm Distance'])[1:k]
 
     if show == True:
         indices = top_k.index.get_values()
         for index in indices:
             plt.figure()
             plt.imshow(images[index])
-    return(scores_df, top_k)
+    return (scores_df, top_k)
 
 
-#Example Usage:
+# Example Usage:
 clip_id = 249450406
 images = gray_images
 k = 10
 distance = 'm'
-show= True
+show = True
 compare_all(clip_id, images, k, distance, show)
 
-#%%
-
+# %%
