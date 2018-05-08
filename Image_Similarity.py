@@ -16,7 +16,7 @@ import os
 import matplotlib.image as mpimg
 import pandas as pd
 from distance_transformation import *
-
+from image_analysis import * # For RGB
 
 #Importing Data
 all_data = ft.load_whole_file("similar-staff-picks-challenge-clips.csv", "similar-staff-picks-challenge-clip-categories.csv", "similar-staff-picks-challenge-categories.csv")             
