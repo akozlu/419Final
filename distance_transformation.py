@@ -25,8 +25,8 @@ class FeatureSpace(object):
         print("        Generating TF IDF Caption Vector")
         tfidf_captions = tf_idf_captions(self.data)
         print("        Performing SVD on Sparse TF IDF Matrix")
-        svd_dp = TruncatedSVD(n_components =100)
-        self.text_vect = svd_dp.fit_transform(tfidf_captions)
+        self.svd_dp = TruncatedSVD(n_components =100)
+        self.text_vect = self.svd_dp.fit_transform(tfidf_captions)
         return self.text_vect
         
     def generate_misc_vector(self, features):
@@ -82,15 +82,26 @@ class FeatureSpace(object):
         plt.ylabel('Second t-SNE Component')
         plt.show()
         
-    def get_similar(self, clip_id, mode = 'euclidean', p = 3):
+    def get_similar(self, clip_id, mode = 'euclidean', p = 3, with_cat = False):
         clip_index = self.data.index[self.data['id'] == clip_id]
         target_clip = self.final_vect[clip_index][0]
-        distances = [(idx, ot.calculate_distance(target_clip, clip, mode, p)) for idx, clip in enumerate(self.final_vect)]
+        distances = [(idx, ot.calculate_distance(target_clip, clip, mode, p), self.data['main categories'][idx]) for idx, clip in enumerate(self.final_vect)]
         distances = sorted(distances, key = lambda x: x[1])
         self.distances = distances
-        top_10 = distances[:10]
-        top_10_indexes = [item[0] for item in top_10]
-        top_10_clips = [data['id'][index] for index in top_10_indexes]
+        if with_cat:
+            top_10_clips = []
+            for item in distances:
+                if len(top_10_clips)==10:
+                    break
+                else:
+                    if item[2] == []:
+                        continue
+                    else:
+                        top_10_clips += [data['id'][item[0]]]
+        else:
+            top_10 = distances[:10]
+            top_10_indexes = [item[0] for item in top_10]
+            top_10_clips = [data['id'][index] for index in top_10_indexes]        
         return top_10_clips
         
 def extract_data_with_thumbid(path):
@@ -122,4 +133,37 @@ def vectorize_images(pickle_file, df):
                 vect_img_mtx += [list(map(float,item[1]))]              
     return vect_img_mtx
 
-ft = FeatureSpace("similar-staff-picks-challenge-clips.csv", 'vect_images')
+fs = FeatureSpace("similar-staff-picks-challenge-clips.csv", 'vect_images')
+fs.data["main categories"] = fs.data["main categories"].apply(lambda x: x[0] if len(x)!=0 else [])
+
+#"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# Testing Accuracy and Purity
+test = False
+
+#"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+if test:
+    purity = 0
+    accuracy = 0
+    num_clips = 0
+    for item in fs.data['id']:
+        true_category = fs.data[fs.data['id']==item]['main categories'].values[0]
+        if true_category == []:
+            continue
+        else:
+            top_10 = fs.get_similar(item, with_cat = True)
+            categories = []
+            for similar in top_10:
+                categories += [fs.data[fs.data['id']==similar]['main categories'].values[0]]
+            unique_cat = list(np.unique(np.array(categories)))
+            counts = []
+            for cat in unique_cat:
+                counts += [categories.count(cat)]
+            purity += max(counts)
+            accuracy += categories.count(true_category)
+            num_clips += 1
+    purity = purity/(10*num_clips)
+    accuracy = accuracy/(10*num_clips)
+
+
