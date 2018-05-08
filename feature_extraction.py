@@ -5,6 +5,7 @@ from urllib.request import urlopen
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
+import requests
 
 
 # Function to map category IDs to category names
@@ -22,7 +23,7 @@ def map_categories(clip_categories, category_map):
             else:
                 parent_cat_map = category_map[category_map['category_id'] == parent_id]
                 clip_categories.at[i, 'sub categories'].append([cat_map.at[cat_map.index[0], 'name'],
-                    parent_cat_map.at[parent_cat_map.index[0], 'name']])
+                                                                parent_cat_map.at[parent_cat_map.index[0], 'name']])
 
     return clip_categories
 
@@ -57,6 +58,35 @@ def load_whole_file(file_path, clip_category_file_path, category_map_file_path):
     category_map = pd.read_csv(category_map_file_path)
     clip_categories = map_categories(clip_categories, category_map)
     data = insert_categories(data, clip_categories)
+    return data
+
+
+def get_updated_captions_for_whole_file(data):
+    print("Getting new captions for the whole dataset...")
+
+    for id in data['id']:
+
+        url = 'https://vimeo.com/' + str(id)
+        url_valid = url_is_alive(url)
+
+        if url_valid:  # check if url is valid
+            vimeo_webpage = requests.get(url)
+
+            content = vimeo_webpage.text  # get content from webpage
+            soup = BeautifulSoup(content, 'html.parser')
+
+            if soup.find('div', attrs={
+                'class': 'clip_details-description description-wrapper iris_desc'}) is not None:
+                # get the video description (all paragraphs instead of first paragraph
+                article_soup = [s.get_text(separator=" ", strip=True) for s in soup.find('div', attrs={
+                    'class': 'clip_details-description description-wrapper iris_desc'}).find_all(
+                    'p')]
+
+                index = data.loc[data['id'] == id].index[0]
+
+                data.loc[index, 'caption'] = ' '.join(article_soup)  # update the caption of our train dataset
+    print("Finished getting new captions for the train file. ")
+
     return data
 
 
@@ -136,9 +166,10 @@ class PandaFrames(object):
         print("Loading training and test files into Panda Data Frames..")
         self.pandaframes = load_train_and_test_files(filepath, clip_category_file_path, category_map_file_path)
         print("Panda Data Frames are ready.")
-        #self.get_new_captions_for_train_file()
-        #self.get_new_captions_for_test_file()
+        # self.get_new_captions_for_train_file()
+        # self.get_new_captions_for_test_file()
         print("We are not extracting new captions temporarily. ")
+
     def get_train_file(self):
         """Return Panda Dataframe Training File."""
         train = self.pandaframes[0]
@@ -170,7 +201,7 @@ class PandaFrames(object):
 
                 content = vimeo_webpage.read()  # get content from webpage
                 soup = BeautifulSoup(content, 'html.parser')
-                print(id)
+
                 if soup.find('div', attrs={
                     'class': 'clip_details-description description-wrapper iris_desc'}) is not None:
                     # get the video description (all paragraphs instead of first paragraph
@@ -213,4 +244,3 @@ class PandaFrames(object):
 
                     test.loc[index, 'caption'] = ' '.join(article_soup)  # update the caption of our train dataset
         print("Finished getting new captions for the test file.")
-

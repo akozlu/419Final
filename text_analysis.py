@@ -1,18 +1,21 @@
-import numpy as np
-import pandas as pd
-from ccg_nlpy import remote_pipeline
-import nltk
-from nltk import pos_tag
-from nltk.stem import WordNetLemmatizer
-from nltk.corpus import stopwords
-from nltk.corpus import wordnet as wn
 import re
 import string
-import feature_extraction
+from collections import *
+from itertools import *
 import gensim
+import nltk
+import numpy as np
+from nltk import pos_tag
+from nltk.corpus import stopwords
+from nltk.corpus import wordnet as wn
+from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+import os
 
-# # UNCOMMENT THE TWO LINES BELOW TO RUN FOR THE FIRST TIME
+import feature_extraction
+
+# # Uncomment the following 4 lines when running code for the first time
+# nltk.download()
 # nltk.download('wordnet')
 # nltk.download('stopwords')
 # nltk.download('averaged_perceptron_tagger')
@@ -52,15 +55,15 @@ def transform_caption(dataframe):
     return dataframe
 
 
-def transform_caption_for_gensim(dataframe):
-    dataframe['tokenized caption'] = ""
+def create_gen_docs(dataframe):
+    gen_docs = []
+    caption_id_dict = {}
     for i in range(len(dataframe)):
         caption = dataframe.at[i, 'caption']
-        if caption is np.NaN:
-            dataframe.at[i, 'tokenized caption'] = []
-        else:
-            dataframe.at[i, 'tokenized caption'] = [w.lower() for w in word_tokenize(str(dataframe.at[i, 'caption']))]
-    return dataframe
+        tokens = [w.lower() for w in word_tokenize(str(caption)) if w not in stopWords]
+        gen_docs.append(tokens)
+        caption_id_dict[tuple(tokens)] = dataframe.at[i, 'id']
+    return [gen_docs, caption_id_dict]
 
 
 # Function to convert the Penn part of speech tag to the WordNet synset part of speech tag
@@ -220,7 +223,7 @@ def calculate_accuracy(df, thresh, top_k, f_sim):
     return accuracies / len(df)
 
 
-# Removing those without Columns
+# Removing those without main categories
 def remove_empty_categories(data):
     data = data.reindex(index=data.index[::-1])
     rows_to_delete = []
@@ -233,22 +236,94 @@ def remove_empty_categories(data):
 
 
 # # Normal initialization to get online captions
-pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv',
-                                     'similar-staff-picks-challenge-clip-categories.csv',
-                                     'similar-staff-picks-challenge-categories.csv')
-train_file = pdf.get_train_file()
-test_file = pdf.get_test_file()
-print(len(train_file))
-print(len(test_file))
-train_text = remove_empty_categories(train_file)
-test_text = remove_empty_categories(test_file)
+# pdf = feature_extraction.PandaFrames('similar-staff-picks-challenge-clips.csv',
+#                                     'similar-staff-picks-challenge-clip-categories.csv',
+#                                    'similar-staff-picks-challenge-categories.csv')
+# train_file = pdf.get_train_file()
+# test_file = pdf.get_test_file()
 
-print(len(train_text))
-print(len(test_text))
 
-train = transform_caption_for_gensim(train_text)
-test = transform_caption_for_gensim(test_text)
+# test_text = remove_empty_categories(test_file)
 
+
+# train = transform_caption(train_text)
+# test = transform_caption(test_text)
+class TextualAccuracy(object):
+    def __init__(self, filepath, clip_category_file_path, category_map_file_path, threshold):
+        dataset = feature_extraction.load_whole_file(filepath,
+                                                     clip_category_file_path,
+                                                     category_map_file_path)
+
+        # updated_dataset = feature_extraction.get_updated_captions_for_whole_file(dataset)
+        self.train_text = remove_empty_categories(dataset)
+        docs = create_gen_docs(self.train_text)
+        self.training_documents = docs[0]
+        self.tokens_id_dict = docs[1]
+
+        # creating gensim TF-IDF, Similarity Models 
+        self.dictionary = gensim.corpora.Dictionary(self.training_documents)
+        self.corpus = [self.dictionary.doc2bow(gen_doc) for gen_doc in self.training_documents]
+        self.tf_idf = gensim.models.TfidfModel(self.corpus)
+        self.similarity_model = gensim.similarities.Similarity(os.path.dirname(os.path.abspath(__file__)),
+                                                               self.tf_idf[self.corpus],
+                                                               num_features=len(self.dictionary))
+        self.threshold = threshold
+
+    def calculate_tf_idf_accuracy(self):
+
+        correct_classifications = 0
+
+        for id in self.train_text['id']:  # For each video in our dataset 
+
+            index = self.train_text.loc[self.train_text['id'] == id].index[0]  # get its index 
+            caption = self.train_text.loc[index, 'caption']  # find the associated caption 
+            original_category = self.train_text.loc[index, 'main categories']  # Get categories of that video 
+            print('Category of this video was {}'.format(original_category))
+
+            query_doc = [w.lower() for w in word_tokenize(str(caption)) if
+                         w not in stopWords]  # tokenize caption of that video 
+            # print(query_doc)
+            query_doc_bow = self.dictionary.doc2bow(query_doc)
+
+            query_doc_tf_idf = self.tf_idf[query_doc_bow]  # create tf_idf_model of that query (video) 
+
+            similarity_scores = (
+                self.similarity_model[query_doc_tf_idf])  # Find similarity scores with all other videos
+            top_10 = (similarity_scores.argsort()[-10:][::-1])  # Get top 10 similarity scores 
+            similar_category_list = []
+
+            # This loop tracks indexes of these top scores and finds the main categories of the videos associated with top-10 similarity scores 
+            for s in top_10:
+                i = (self.tokens_id_dict[tuple(self.training_documents[int(s)])])
+                index = self.train_text.loc[self.train_text['id'] == i].index[0]
+                similar_category_list.append((self.train_text.loc[index, 'main categories']))
+
+            categories = list(chain(*similar_category_list))  # now we have all categories of these videos in a list 
+
+            # Calculate how many of these categories are the same with original category 
+            similar_category_counter = 0
+            counter = Counter(categories)
+            for cat in original_category:
+                similar_category_counter = similar_category_counter + counter[cat]
+
+            # If the number is above a certain threshold (i.e. 3 out of 10), count it as correct classification 
+            if (similar_category_counter > self.threshold):
+                correct_classifications = correct_classifications + 1
+
+        # print('The main categories of most similar videos were {}'.format(categories))
+        # print('LENGTH OF DATASET {}'.format(len(train_text)))
+        accuracy = float(correct_classifications / len(self.train_text))
+        print("The accuracy of TF-IDF Model for a threshold of {} documents out of 10 was {}".format(self.threshold,
+                                                                                                     accuracy))
+
+
+TextModel = TextualAccuracy('similar-staff-picks-challenge-clips.csv',
+                            'similar-staff-picks-challenge-clip-categories.csv',
+                            'similar-staff-picks-challenge-categories.csv', 3)
+
+TextModel.calculate_tf_idf_accuracy()
+
+"""
 # # Temporary initialization to work with initial captions
 # train = feature_extraction.load_train_and_test_files('similar-staff-picks-challenge-clips.csv',
 #                                                      'similar-staff-picks-challenge-clip-categories.csv',
@@ -257,6 +332,8 @@ test = transform_caption_for_gensim(test_text)
 # train = train.drop(['Unnamed: 0', 'index'], axis=1)
 # train = transform_caption(train)
 # # # Count null captions
+
+
 print('Number of NaN captions:', train['caption'].isnull().sum())
 # #
 # train = caption_similarity(train, 214566929, path_sim)
@@ -280,3 +357,4 @@ for id in train_text['id']:
 #                             lch_sim))
 # print(sentence_similarity(['The', 'kid', 'named', 'Jesus', 'ate', 'the', 'apple', 'and', 'loved', 'it'],
 #                                ['Hi', 'my', 'name', 'is', 'Nazih', 'and', 'I', 'like', 'to', 'code']))
+"""
