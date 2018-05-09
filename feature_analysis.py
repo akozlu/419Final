@@ -1,32 +1,18 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  6 20:16:06 2018
+Created on Tue May  8 16:18:41 2018
 
 @author: christianduffydeabreu
 """
-from sklearn.feature_extraction.text import TfidfVectorizer
-import feature_extraction as ft
-import other_features as ot
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import pickle
-import os
-import matplotlib.image as mpimg
-import pandas as pd
-from distance_transformation import *
+
 import operator
-from image_analysis import rgb2gray
 
-# Importing Data
-all_data = ft.load_whole_file("similar-staff-picks-challenge-clips.csv",
-                              "similar-staff-picks-challenge-clip-categories.csv",
-                              "similar-staff-picks-challenge-categories.csv")
-data = extract_data_with_thumbid("similar-staff-picks-challenge-clips.csv")
+import pandas as pd
+
+from distance_transformation import *
 
 
-# %%
 # Removing those without Columns
 def remove_empty_categories(data):
     data = data.reindex(index=data.index[::-1])
@@ -39,39 +25,23 @@ def remove_empty_categories(data):
     return (data)
 
 
+# Importing Data
+all_data = ft.load_whole_file("similar-staff-picks-challenge-clips.csv",
+                              "similar-staff-picks-challenge-clip-categories.csv",
+                              "similar-staff-picks-challenge-categories.csv")
 all_data = remove_empty_categories(all_data)
-data = remove_empty_categories(data)
+all_data = ot.strdate_to_int(all_data)
 
-images = vectorize_images('vect_images', data)
-dir_path = os.path.dirname(os.path.realpath('__file__'))
-webppath = dir_path + "/WebP_Files/"
-jpgpath = dir_path + "/samples/"
+df = all_data[['created', 'filesize', 'total_comments', 'total_plays', 'total_likes']]
+images = df.values.tolist()
 
 
-def image_list(color):
-    image_list = []
-    ''' Saving Images to List '''
-    for image in os.listdir(jpgpath):
-        if '.DS_Store' in image:  # This may sometimes be found in a folder preventing uploads
-            continue
-        img = mpimg.imread(image)
-        if color == "gray":
-            image_list.append(rgb2gray(img))
-        elif color == "rgb":
-            image_list.append(img)
-    return (image_list)
-
-
-os.chdir(jpgpath)
-rgb_images = image_list('rgb')
-os.chdir(dir_path)
-
-
-def image_similarity(clip_id, p=3, all_images=rgb_images, data=data, images=images, mode='euclidean', k=10, show=False):
+# %%
+def feature_similarity(clip_id, p=3, data=all_data, images=images, mode='euclidean', k=11):
     d = []
     test_image_index = np.where(data['id'] == clip_id)[0][0]
     test_image = images[test_image_index]
-    test_cat = data.iloc[test_image_index, 12][0]
+    test_cat = data.iloc[test_image_index, 13][0]
     # Comparing To Every Other Image:
     for idx, item in enumerate(images):
         if idx == test_image_index:
@@ -84,15 +54,6 @@ def image_similarity(clip_id, p=3, all_images=rgb_images, data=data, images=imag
     scores_df['Distance'] = d
     top_k = scores_df.sort_values(by=['Distance'])[1:k]
 
-    # Show for plotting
-    if show == True:
-        indices = top_k.index.get_values()
-        for index in indices:
-            plt.figure()
-            plt.imshow(rgb_images[index])
-        plt.figure()
-        plt.imshow(rgb_images[np.where(data['id'] == clip_id)[0][0]])
-        plt.title('Original Image')
     return (top_k, test_cat)
 
 
@@ -114,7 +75,7 @@ def calculate_accuracy(top, test_cat, k):
     cat_count = 0
     total = k - 1;
     if len(test_cat[0]) > 1:
-        for cat in test_cat:
+        for cat in test_cat[0]:
             for im in top['main categories']:
                 if im[0] == cat:
                     cat_count += 1
@@ -126,10 +87,9 @@ def calculate_accuracy(top, test_cat, k):
     return (accuracy)
 
 
-# %% There is a more efficient way to go about this but for now it taks around 15 minutes to run each type of accuracy, so essentially an hour to run this code
-import random
+# %%
 
-rand_int = random.sample(range(1, len(data)), 200)
+# rand_int = random.sample(range(1, len(all_data)), len(all_data))
 
 pur_final = []
 acc_final = [];
@@ -138,21 +98,19 @@ modes = ['cosine', 'minkowsky', 'euclidean', 'manhattan', 'chebyshev']
 for mode1 in modes:
     acc = []
     pur = []
-    for i in rand_int:
-        print(i)
-        clip_id = data['id'][i]
-        [top_clips, test_cat] = image_similarity(clip_id=clip_id, mode=mode1, k=k, show=False)
+    for i in range(len(all_data)):
+        clip_id = all_data['id'][i]
+        [top_clips, test_cat] = feature_similarity(clip_id=clip_id, mode=mode1, k=k)
         acc.append(calculate_accuracy(top_clips, test_cat, k))
         pur.append(calculate_purity(top_clips))
     acc_final.append(np.mean(acc))
     pur_final.append(np.mean(pur))
     print(mode1 + ' done')
-
-# %%
+## Plotting Purity and Accuracy Results
 fig, ax = plt.subplots(1, 1)
 plt.plot(range(5), pur_final)
 plt.plot(range(5), acc_final)
-plt.title('Image Category Similarity')
+plt.title('Extra Features Category Similarity')
 plt.xlabel('Distance Metric')
 plt.ylabel('Accuracy')
 ax.set_xticks(range(5))
